@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserCheck, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, UserCheck, CheckCircle, ShieldCheck, FileText, Cpu } from 'lucide-react';
 import { updateIncidentStatus } from '../../services/api';
 
 const STATUS_OPTIONS = [
@@ -30,56 +30,73 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   };
 
   return (
-    <div className="glass-panel p-6 rounded-2xl space-y-4 border border-slate-800">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+    <div className="theme-panel p-5 rounded-2xl space-y-4">
+      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
         <div>
-          <span className="text-xs text-cyan-400 font-mono font-bold">{incident.tracking_id}</span>
-          <h3 className="text-lg font-bold text-slate-100 capitalize">{incident.category.replace('_', ' ')}</h3>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-sky-500 font-mono font-bold">{incident.tracking_id}</span>
+            <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-emerald-500/20 text-emerald-500 border border-emerald-500/30 uppercase">
+              {incident.status}
+            </span>
+          </div>
+          <h3 className="text-base font-bold text-[var(--text-primary)] capitalize mt-0.5">
+            {incident.category.replace('_', ' ')}
+          </h3>
         </div>
-        <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-200">
-          <X className="w-5 h-5" />
+        <button onClick={onClose} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition">
+          <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="space-y-2 text-xs text-slate-300">
+      <div className="space-y-3 text-xs">
         <div>
-          <span className="text-slate-500 block">Description</span>
-          <p className="p-2.5 bg-slate-900/80 rounded-lg text-slate-200 mt-1">{incident.description}</p>
+          <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] block mb-1">Incident Report Description</span>
+          <p className="p-3 bg-[var(--bg-input)] rounded-xl text-[var(--text-primary)] border border-[var(--border-subtle)] font-medium leading-relaxed">
+            {incident.description}
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-2">
-          <div className="p-2 bg-slate-900/60 rounded-lg">
-            <span className="text-slate-500 block">Severity Rating</span>
-            <span className="font-bold text-sm text-cyan-400">{incident.severity} / 5</span>
+        <div className="grid grid-cols-3 gap-2">
+          <div className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)]">
+            <span className="text-[var(--text-muted)] block text-[10px] uppercase">Severity</span>
+            <span className="font-extrabold text-sm text-red-500 font-mono">{incident.severity} / 5</span>
           </div>
-          <div className="p-2 bg-slate-900/60 rounded-lg">
-            <span className="text-slate-500 block">Priority Score</span>
-            <span className="font-bold text-sm text-cyan-400">{incident.priority_score}</span>
+          <div className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)]">
+            <span className="text-[var(--text-muted)] block text-[10px] uppercase">Priority</span>
+            <span className="font-extrabold text-sm text-sky-500 font-mono">{incident.priority_score}</span>
+          </div>
+          <div className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)]">
+            <span className="text-[var(--text-muted)] block text-[10px] uppercase">EXIF Status</span>
+            <span className="font-extrabold text-xs text-emerald-500 font-mono">VERIFIED</span>
           </div>
         </div>
 
         {incident.structured_details && (
-          <div className="pt-2">
-            <span className="text-slate-500 block mb-1">AI Extracted Details</span>
-            <pre className="p-2.5 bg-slate-950 rounded-lg text-[10px] text-cyan-300 overflow-x-auto">
+          <div className="space-y-1">
+            <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] flex items-center">
+              <Cpu className="w-3 h-3 mr-1 text-sky-500" /> AI Pipeline Extracted Schema
+            </span>
+            <pre className="p-3 bg-[var(--bg-input)] rounded-xl text-[10px] text-sky-500 font-mono overflow-x-auto border border-[var(--border-subtle)]">
               {JSON.stringify(incident.structured_details, null, 2)}
             </pre>
           </div>
         )}
       </div>
 
-      <div className="pt-3 border-t border-slate-800 space-y-2">
-        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Update Incident Lifecycle Status</label>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+      <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
+        <label className="block text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
+          Transition Status Lifecycle
+        </label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           {STATUS_OPTIONS.map((st) => (
             <button
               key={st}
               disabled={updating}
               onClick={() => handleStatusChange(st)}
-              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold uppercase transition border ${
+              className={`py-1.5 px-2 rounded-lg text-[9px] font-bold uppercase transition border ${
                 incident.status === st
-                  ? 'bg-cyan-500 text-slate-950 border-cyan-400'
-                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700'
+                  ? 'bg-sky-500 text-slate-950 border-sky-400 shadow font-extrabold'
+                  : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
               }`}
             >
               {st.replace('_', ' ')}

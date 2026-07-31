@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mic, Square, Check, RefreshCw } from 'lucide-react';
+import { Mic, Square, RefreshCw } from 'lucide-react';
 
 export default function VoiceRecorder({ onAudioRecorded }) {
   const [recording, setRecording] = useState(false);
@@ -42,12 +42,12 @@ export default function VoiceRecorder({ onAudioRecorded }) {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Voice Note (Optional)</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Voice Note (Whisper STT)</label>
       {audioUrl ? (
-        <div className="p-3 bg-slate-900 border border-slate-700 rounded-xl flex items-center justify-between">
-          <audio src={audioUrl} controls className="h-8 max-w-[220px]" />
-          <button type="button" onClick={resetAudio} className="p-1.5 text-slate-400 hover:text-cyan-400">
+        <div className="p-3 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-2xl flex items-center justify-between">
+          <audio src={audioUrl} controls className="h-8 max-w-[200px]" />
+          <button type="button" onClick={resetAudio} className="p-1.5 text-[var(--text-muted)] hover:text-sky-500">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -55,21 +55,21 @@ export default function VoiceRecorder({ onAudioRecorded }) {
         <button
           type="button"
           onClick={recording ? stopRecording : startRecording}
-          className={`w-full py-3 px-4 rounded-xl font-medium flex items-center justify-center space-x-2 transition ${
+          className={`w-full h-36 rounded-2xl font-bold text-xs flex flex-col items-center justify-center space-y-1.5 transition border ${
             recording
-              ? 'bg-red-500/20 text-red-400 border border-red-500/50 animate-pulse'
-              : 'bg-slate-900 text-slate-300 border border-slate-700 hover:border-cyan-500/50'
+              ? 'bg-red-500/20 text-red-500 border-red-500/50 radar-emergency'
+              : 'bg-[var(--bg-input)] text-[var(--text-primary)] border-[var(--border-subtle)] hover:border-sky-500/50'
           }`}
         >
           {recording ? (
             <>
-              <Square className="w-4 h-4" />
-              <span>Stop Recording...</span>
+              <Square className="w-6 h-6 text-red-500" />
+              <span>Recording Voice Note...</span>
             </>
           ) : (
             <>
-              <Mic className="w-4 h-4 text-cyan-400" />
-              <span>Record Audio Description</span>
+              <Mic className="w-6 h-6 text-sky-500" />
+              <span>Record Voice Note</span>
             </>
           )}
         </button>

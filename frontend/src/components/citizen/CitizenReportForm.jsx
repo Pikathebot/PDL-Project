@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Send, Phone, CheckCircle } from 'lucide-react';
+import { AlertTriangle, Send, Phone, CheckCircle, Flame, Car, HardHat, Waves, Wind, Zap, Activity, ShieldAlert } from 'lucide-react';
 import CameraCapture from './CameraCapture';
 import VoiceRecorder from './VoiceRecorder';
 import LocationPicker from './LocationPicker';
 import { submitIncidentReport } from '../../services/api';
 
 const CATEGORIES = [
-  { id: 'road_accident', label: 'Road Accident' },
-  { id: 'fire', label: 'Fire Hazard' },
-  { id: 'infrastructure_damage', label: 'Infrastructure Damage' },
-  { id: 'flooding', label: 'Flooding / Waterlogging' },
-  { id: 'environmental_hazard', label: 'Environmental / Gas Leak' },
-  { id: 'electrical_hazard', label: 'Electrical Danger' },
-  { id: 'medical_emergency', label: 'Medical Emergency' },
-  { id: 'criminal_activity', label: 'Violence / Crime' },
+  { id: 'road_accident', label: 'Road Accident', icon: Car, color: 'text-amber-500 bg-amber-500/10 border-amber-500/30' },
+  { id: 'fire', label: 'Fire Hazard', icon: Flame, color: 'text-red-500 bg-red-500/10 border-red-500/30' },
+  { id: 'infrastructure_damage', label: 'Infrastructure', icon: HardHat, color: 'text-sky-500 bg-sky-500/10 border-sky-500/30' },
+  { id: 'flooding', label: 'Flooding / Water', icon: Waves, color: 'text-blue-500 bg-blue-500/10 border-blue-500/30' },
+  { id: 'environmental_hazard', label: 'Gas / Chemical', icon: Wind, color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30' },
+  { id: 'electrical_hazard', label: 'Electrical Hazard', icon: Zap, color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' },
+  { id: 'medical_emergency', label: 'Medical Emergency', icon: Activity, color: 'text-purple-500 bg-purple-500/10 border-purple-500/30' },
+  { id: 'criminal_activity', label: 'Crime / Violence', icon: ShieldAlert, color: 'text-rose-500 bg-rose-500/10 border-rose-500/30' },
 ];
 
 export default function CitizenReportForm() {
@@ -56,16 +56,16 @@ export default function CitizenReportForm() {
 
   if (result) {
     return (
-      <div className="max-w-xl mx-auto glass-panel p-8 rounded-2xl text-center space-y-4 border border-emerald-500/30">
-        <CheckCircle className="w-16 h-16 text-emerald-400 mx-auto" />
-        <h2 className="text-2xl font-bold text-slate-100">Report Submitted Successfully</h2>
-        <p className="text-slate-400 text-sm">Our AI pipeline is processing your submission and triaging priority.</p>
-        <div className="p-4 bg-slate-900/80 rounded-xl border border-slate-800 font-mono text-cyan-400 font-bold text-lg">
+      <div className="max-w-xl mx-auto theme-panel p-8 rounded-3xl text-center space-y-4 border border-emerald-500/30 shadow-2xl">
+        <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
+        <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Report Transmitted</h2>
+        <p className="text-[var(--text-secondary)] text-xs">Our AI pipeline is extracting fields, verifying EXIF, and ranking priority.</p>
+        <div className="p-4 bg-[var(--bg-input)] rounded-2xl border border-[var(--border-subtle)] font-mono text-sky-500 font-bold text-xl tracking-wider">
           Tracking ID: {result.tracking_id}
         </div>
         <button
           onClick={() => setResult(null)}
-          className="mt-4 px-6 py-2.5 bg-cyan-500 text-slate-950 font-semibold rounded-xl hover:bg-cyan-400 transition"
+          className="mt-4 px-6 py-3 bg-sky-500 text-slate-950 font-bold rounded-xl hover:bg-sky-400 transition shadow"
         >
           Submit Another Report
         </button>
@@ -74,45 +74,50 @@ export default function CitizenReportForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl space-y-6">
-      <div className="flex items-center space-x-3 border-b border-slate-800 pb-4">
-        <div className="p-3 bg-cyan-500/10 rounded-xl text-cyan-400">
+    <form onSubmit={handleSubmit} className="max-w-2xl mx-auto theme-panel p-6 sm:p-8 rounded-3xl space-y-6 shadow-2xl">
+      <div className="flex items-center space-x-3 border-b border-[var(--border-subtle)] pb-4">
+        <div className="p-3 bg-sky-500/10 rounded-2xl text-sky-500">
           <AlertTriangle className="w-6 h-6" />
         </div>
         <div>
-          <h2 className="text-xl font-bold text-slate-100">Report Public Hazard</h2>
-          <p className="text-xs text-slate-400">Automated AI severity analysis and dispatch routing</p>
+          <h2 className="text-xl font-extrabold text-[var(--text-primary)] uppercase tracking-wider">Report Public Hazard</h2>
+          <p className="text-xs text-[var(--text-secondary)]">Automated AI priority triage and authority dispatching</p>
         </div>
       </div>
 
       <div className="space-y-2">
-        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Hazard Category</label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setCategory(cat.id)}
-              className={`p-2.5 rounded-xl text-xs font-medium text-center border transition ${
-                category === cat.id
-                  ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50 shadow-md shadow-cyan-500/10'
-                  : 'bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
+        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Select Hazard Type</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {CATEGORIES.map((cat) => {
+            const Icon = cat.icon;
+            const isSelected = category === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setCategory(cat.id)}
+                className={`p-3 rounded-2xl text-left border transition flex flex-col justify-between space-y-2 ${
+                  isSelected
+                    ? `${cat.color} font-bold shadow-lg ring-2 ring-sky-500/40`
+                    : 'bg-[var(--bg-input)] text-[var(--text-secondary)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                <span className="text-xs font-bold leading-tight block">{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      <div className="space-y-2">
-        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Incident Description</label>
+      <div className="space-y-1.5">
+        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Description of Hazard</label>
         <textarea
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what happened, any immediate dangers, or casualties..."
-          className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none placeholder-slate-500"
+          placeholder="Describe what happened, injuries, or immediate risks..."
+          className="w-full theme-input rounded-2xl p-3.5 text-sm font-medium focus:border-sky-500 focus:outline-none"
         />
       </div>
 
@@ -124,25 +129,25 @@ export default function CitizenReportForm() {
       <LocationPicker onLocationChange={setLocation} />
 
       <div className="space-y-1">
-        <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center">
-          <Phone className="w-3.5 h-3.5 mr-1 text-cyan-400" /> Phone Number (Optional for updates)
+        <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider flex items-center">
+          <Phone className="w-3.5 h-3.5 mr-1 text-sky-500" /> Contact Phone (Optional)
         </label>
         <input
           type="tel"
           value={phoneNumber}
           onChange={(e) => setPhoneNumber(e.target.value)}
           placeholder="+91 98765 43210"
-          className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-cyan-500 focus:outline-none"
+          className="w-full theme-input rounded-xl px-3.5 py-2.5 text-sm font-medium"
         />
       </div>
 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 hover:opacity-95 transition flex items-center justify-center space-x-2"
+        className="w-full py-4 bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-extrabold rounded-2xl shadow-lg shadow-sky-500/25 hover:opacity-95 transition flex items-center justify-center space-x-2 text-base tracking-wider uppercase"
       >
         <Send className="w-5 h-5" />
-        <span>{submitting ? 'Submitting & Processing AI...' : 'Submit Incident Report'}</span>
+        <span>{submitting ? 'Transmitting to AI Pipeline...' : 'Submit Emergency Report'}</span>
       </button>
     </form>
   );

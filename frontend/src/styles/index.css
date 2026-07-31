@@ -2,32 +2,51 @@
 
 @layer base {
   :root {
-    --bg-primary: #0a0e17;
-    --bg-secondary: #111726;
-    --bg-card: rgba(17, 23, 38, 0.85);
+    --bg-app: #070a11;
+    --bg-[#111726]: #0d121d;
+    --bg-card: rgba(15, 22, 36, 0.85);
+    --bg-card-hover: rgba(22, 32, 52, 0.9);
+    --bg-input: #111827;
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
-    --accent-blue: #38bdf8;
-    --accent-emerald: #10b981;
-    --accent-crimson: #ef4444;
-    --accent-amber: #f59e0b;
-    --border-color: rgba(255, 255, 255, 0.07);
+    --text-muted: #64748b;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(56, 189, 248, 0.3);
+    
+    --shadow-panel: 0 12px 32px 0 rgba(0, 0, 0, 0.5);
+    
+    /* Map Popup Dark */
+    --map-popup-bg: #0f172a;
+    --map-popup-text: #f8fafc;
+    --map-popup-border: rgba(56, 189, 248, 0.3);
   }
 
   .light {
-    --bg-primary: #f1f5f9;
-    --bg-secondary: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.9);
+    --bg-app: #f1f5f9;
+    --bg-[#111726]: #ffffff;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-card-hover: rgba(241, 245, 249, 1);
+    --bg-input: #f8fafc;
     --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --border-color: rgba(0, 0, 0, 0.08);
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --border-subtle: rgba(0, 0, 0, 0.1);
+    --border-strong: rgba(2, 132, 199, 0.4);
+    
+    --shadow-panel: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+    
+    /* Map Popup Light */
+    --map-popup-bg: #ffffff;
+    --map-popup-text: #0f172a;
+    --map-popup-border: rgba(2, 132, 199, 0.3);
   }
 }
 
 body {
-  background-color: var(--bg-primary);
+  background-color: var(--bg-app);
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -38,22 +57,45 @@ h1, h2, h3, h4, h5, h6 {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Glassmorphism 2.0 panels */
-.glass-panel {
-  background: var(--bg-card);
+/* Theme-adaptive glass panel */
+.theme-panel {
+  background-color: var(--bg-card);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-color);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Custom Radar Pulse Animation for Active Emergencies */
+.theme-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s ease-in-out;
+}
+
+.theme-card:hover {
+  background-color: var(--bg-card-hover);
+  border-color: var(--border-strong);
+}
+
+.theme-input {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+}
+
+.theme-input:focus {
+  border-color: #0284c7;
+  outline: none;
+}
+
+/* Emergency radar pulse */
 @keyframes radar-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
   }
   70% {
-    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 18px rgba(239, 68, 68, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
@@ -64,19 +106,31 @@ h1, h2, h3, h4, h5, h6 {
   animation: radar-pulse 2s infinite ease-out;
 }
 
-/* Leaflet Dark Map Tile Custom Overrides */
-.leaflet-container {
-  background-color: #0d131f !important;
-}
-
+/* Leaflet map popup theme adaptation */
 .custom-popup .leaflet-popup-content-wrapper {
-  background: #111726 !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: var(--map-popup-bg) !important;
+  color: var(--map-popup-text) !important;
+  border: 1px solid var(--map-popup-border);
   border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
 }
 
 .custom-popup .leaflet-popup-tip {
-  background: #111726 !important;
+  background: var(--map-popup-bg) !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
 }

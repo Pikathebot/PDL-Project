@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio, Activity, Users, Layers, Maximize2, Layout } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio, Activity, Users, Layers, Maximize2, Layout, SlidersHorizontal } from 'lucide-react';
 
 import CitizenReportForm from './components/citizen/CitizenReportForm';
 import ReportStatusTracker from './components/citizen/ReportStatusTracker';
@@ -14,19 +14,19 @@ function CitizenView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-center space-x-2 bg-[#111726]/80 p-1.5 rounded-xl border border-slate-800/80 max-w-xs mx-auto">
+      <div className="flex justify-center space-x-2 bg-[var(--bg-card)] p-1.5 rounded-2xl border border-[var(--border-subtle)] max-w-xs mx-auto shadow-md">
         <button
           onClick={() => setTab('report')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition ${
-            tab === 'report' ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-slate-200'
+          className={`px-5 py-2 rounded-xl text-xs font-extrabold tracking-wider transition ${
+            tab === 'report' ? 'bg-sky-500 text-slate-950 shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           REPORT HAZARD
         </button>
         <button
           onClick={() => setTab('track')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition ${
-            tab === 'track' ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-slate-200'
+          className={`px-5 py-2 rounded-xl text-xs font-extrabold tracking-wider transition ${
+            tab === 'track' ? 'bg-sky-500 text-slate-950 shadow-md' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
           }`}
         >
           TRACK STATUS
@@ -38,10 +38,11 @@ function CitizenView() {
   );
 }
 
-function DispatcherDashboardView() {
+function DispatcherDashboardView({ theme }) {
   const [incidents, setIncidents] = useState([]);
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [fullMapMode, setFullMapMode] = useState(false);
+  const [showRadius, setShowRadius] = useState(true);
 
   const loadData = async () => {
     try {
@@ -72,57 +73,62 @@ function DispatcherDashboardView() {
     <div className="space-y-4">
       {/* Tactical Telemetry Metrics Header Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-sky-500">
+        <div className="theme-panel p-3.5 rounded-2xl flex items-center justify-between border-l-4 border-l-sky-500">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">ACTIVE HAZARDS</span>
-            <span className="text-xl font-extrabold text-slate-100 font-mono">{incidents.length}</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase font-mono font-bold block">ACTIVE QUEUE</span>
+            <span className="text-xl font-extrabold text-[var(--text-primary)] font-mono">{incidents.length}</span>
           </div>
-          <Activity className="w-5 h-5 text-sky-400 opacity-80" />
+          <Activity className="w-5 h-5 text-sky-500" />
         </div>
 
-        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-red-500">
+        <div className="theme-panel p-3.5 rounded-2xl flex items-center justify-between border-l-4 border-l-red-500">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">CRITICAL EMERGENCIES</span>
-            <span className="text-xl font-extrabold text-red-400 font-mono">{emergencyCount}</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase font-mono font-bold block">EMERGENCIES</span>
+            <span className="text-xl font-extrabold text-red-500 font-mono">{emergencyCount}</span>
           </div>
-          <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse" />
+          <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" />
         </div>
 
-        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-emerald-500">
+        <div className="theme-panel p-3.5 rounded-2xl flex items-center justify-between border-l-4 border-l-emerald-500">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">ONLINE RESPONDERS</span>
-            <span className="text-xl font-extrabold text-emerald-400 font-mono">14 UNITS</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase font-mono font-bold block">UNITS ONLINE</span>
+            <span className="text-xl font-extrabold text-emerald-500 font-mono">14 UNITS</span>
           </div>
-          <Users className="w-5 h-5 text-emerald-400 opacity-80" />
+          <Users className="w-5 h-5 text-emerald-500" />
         </div>
 
-        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-amber-500">
+        <div className="theme-panel p-3.5 rounded-2xl flex items-center justify-between border-l-4 border-l-amber-500">
           <div>
-            <span className="text-[10px] text-slate-400 uppercase font-mono block">AVG SLA RESOLUTION</span>
-            <span className="text-xl font-extrabold text-amber-400 font-mono">18.4 MIN</span>
+            <span className="text-[10px] text-[var(--text-muted)] uppercase font-mono font-bold block">AVG SLA TIME</span>
+            <span className="text-xl font-extrabold text-amber-500 font-mono">18.4 MIN</span>
           </div>
-          <Layers className="w-5 h-5 text-amber-400 opacity-80" />
+          <Layers className="w-5 h-5 text-amber-500" />
         </div>
       </div>
 
       {/* Main Command Center Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[550px]">
         <div className={`${fullMapMode ? 'lg:col-span-3' : 'lg:col-span-2'} flex flex-col space-y-4`}>
-          <div className="glass-panel p-4 rounded-2xl flex-1 flex flex-col justify-between">
+          <div className="theme-panel p-4 rounded-3xl flex-1 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <MapPin className="w-5 h-5 text-sky-400" />
-                <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider">Geospatial Tactical Map</h2>
+                <MapPin className="w-5 h-5 text-sky-500" />
+                <h2 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider">Geospatial Tactical Map</h2>
               </div>
               
-              <div className="flex items-center space-x-3">
-                <span className="flex items-center text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-500/30">
-                  <Radio className="w-3 h-3 mr-1 animate-pulse" /> LIVE TELEMETRY
-                </span>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowRadius(!showRadius)}
+                  className={`px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition ${
+                    showRadius ? 'bg-sky-500/20 text-sky-500 border-sky-500/40' : 'bg-[var(--bg-input)] text-[var(--text-muted)] border-[var(--border-subtle)]'
+                  }`}
+                >
+                  200m Cluster Radius
+                </button>
                 <button
                   onClick={() => setFullMapMode(!fullMapMode)}
-                  className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-sky-400 transition"
-                  title="Toggle Full Map Mode"
+                  className="p-1.5 bg-[var(--bg-input)] border border-[var(--border-subtle)] rounded-lg text-[var(--text-secondary)] hover:text-sky-500 transition"
+                  title="Toggle Full Map View"
                 >
                   {fullMapMode ? <Layout className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
                 </button>
@@ -133,6 +139,8 @@ function DispatcherDashboardView() {
               incidents={incidents}
               selectedIncident={selectedIncident}
               onSelectIncident={setSelectedIncident}
+              theme={theme}
+              showRadius={showRadius}
             />
           </div>
 
@@ -146,10 +154,10 @@ function DispatcherDashboardView() {
         </div>
 
         {!fullMapMode && (
-          <div className="glass-panel p-4 rounded-2xl space-y-3 flex flex-col">
-            <h2 className="text-sm font-bold border-b border-slate-800 pb-2.5 flex items-center justify-between uppercase tracking-wider">
-              <span>Heap Priority Queue</span>
-              <span className="text-[10px] px-2 py-0.5 bg-slate-900 rounded border border-slate-800 text-sky-400 font-mono">LIVE SORT</span>
+          <div className="theme-panel p-4 rounded-3xl space-y-3 flex flex-col">
+            <h2 className="text-xs font-bold border-b border-[var(--border-subtle)] pb-2.5 flex items-center justify-between uppercase tracking-wider text-[var(--text-primary)]">
+              <span>Priority Triage Queue</span>
+              <span className="text-[10px] px-2 py-0.5 bg-[var(--bg-input)] rounded border border-[var(--border-subtle)] text-sky-500 font-mono font-bold">HEAP SORTED</span>
             </h2>
 
             <IncidentQueue
@@ -166,11 +174,11 @@ function DispatcherDashboardView() {
 
 function AnalyticsView() {
   return (
-    <div className="glass-panel p-10 rounded-2xl space-y-4 text-center max-w-xl mx-auto border border-sky-500/20">
-      <BarChart3 className="w-14 h-14 text-sky-400 mx-auto" />
-      <h2 className="text-2xl font-bold text-slate-100">Analytics & SLA Trends Engine</h2>
-      <p className="text-slate-400 text-sm leading-relaxed">
-        Spatial density heatmaps, SLA trend graphs, peak hours distribution, and responder workload analysis.
+    <div className="theme-panel p-10 rounded-3xl space-y-4 text-center max-w-xl mx-auto border border-sky-500/20 shadow-2xl">
+      <BarChart3 className="w-14 h-14 text-sky-500 mx-auto" />
+      <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Analytics & SLA Trends Engine</h2>
+      <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
+        Geographic hotspot clustering heatmaps, SLA trend charts, peak incident hours distribution, and responder workload analysis.
       </p>
     </div>
   );
@@ -187,41 +195,41 @@ export default function App() {
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0a0e17]">
-      {/* Tactical Header */}
-      <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-2.5">
+    <div className="min-h-screen flex flex-col">
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 theme-panel border-b border-[var(--border-subtle)] px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="p-2 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-xl text-slate-950 shadow-lg shadow-sky-500/20 group-hover:scale-105 transition font-extrabold">
+            <div className="p-2 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-2xl text-slate-950 shadow-lg shadow-sky-500/25 group-hover:scale-105 transition font-extrabold">
               <Shield className="w-5 h-5 fill-slate-950" />
             </div>
             <div>
-              <span className="font-extrabold text-lg tracking-wider text-slate-100 uppercase">SENTINEL</span>
-              <span className="text-[9px] block text-sky-400 font-mono tracking-widest uppercase">TACTICAL COMMAND & DISPATCH</span>
+              <span className="font-extrabold text-lg tracking-wider text-[var(--text-primary)] uppercase">SENTINEL</span>
+              <span className="text-[9px] block text-sky-500 font-mono tracking-widest uppercase font-bold">PUBLIC SAFETY COMMAND</span>
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-1 sm:space-x-2 bg-[#111726] p-1 rounded-xl border border-slate-800">
+          <nav className="flex items-center space-x-1 sm:space-x-2 bg-[var(--bg-input)] p-1.5 rounded-2xl border border-[var(--border-subtle)] shadow-inner">
             <Link
               to="/"
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
-                location.pathname === '/' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold tracking-wider uppercase transition ${
+                location.pathname === '/' ? 'bg-sky-500 text-slate-950 shadow-md font-extrabold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              Citizen App
+              Citizen Portal
             </Link>
             <Link
               to="/dashboard"
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
-                location.pathname === '/dashboard' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold tracking-wider uppercase transition ${
+                location.pathname === '/dashboard' ? 'bg-sky-500 text-slate-950 shadow-md font-extrabold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Dispatcher Hub
             </Link>
             <Link
               to="/analytics"
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
-                location.pathname === '/analytics' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold tracking-wider uppercase transition ${
+                location.pathname === '/analytics' ? 'bg-sky-500 text-slate-950 shadow-md font-extrabold' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               Analytics
@@ -230,19 +238,19 @@ export default function App() {
 
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl bg-[#111726] border border-slate-800 text-slate-400 hover:text-sky-400 transition"
+            className="p-2.5 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-sky-500 transition shadow"
             aria-label="Toggle Theme"
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-sky-600" />}
           </button>
         </div>
       </header>
 
-      {/* Main Command Center Workspace */}
+      {/* Main Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <Routes>
           <Route path="/" element={<CitizenView />} />
-          <Route path="/dashboard" element={<DispatcherDashboardView />} />
+          <Route path="/dashboard" element={<DispatcherDashboardView theme={theme} />} />
           <Route path="/analytics" element={<AnalyticsView />} />
         </Routes>
       </main>

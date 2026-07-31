@@ -18,27 +18,27 @@ export default function CameraCapture({ onFileSelected }) {
   };
 
   return (
-    <div className="space-y-2">
-      <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider">Photo / Evidence Media</label>
+    <div className="space-y-1.5">
+      <label className="block text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Photo / Evidence Media</label>
       {preview ? (
-        <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 group">
-          <img src={preview} alt="Captured preview" className="w-full h-44 object-cover" />
+        <div className="relative rounded-2xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-input)] group">
+          <img src={preview} alt="Captured preview" className="w-full h-36 object-cover" />
           <button
             type="button"
             onClick={clearCapture}
-            className="absolute top-2 right-2 p-1.5 bg-slate-950/80 rounded-full text-slate-300 hover:text-red-400 transition"
+            className="absolute top-2 right-2 p-1.5 bg-slate-950/80 rounded-full text-slate-200 hover:text-red-400 transition"
           >
             <X className="w-4 h-4" />
           </button>
-          <div className="absolute bottom-2 left-2 px-2.5 py-1 bg-emerald-950/80 text-emerald-400 text-xs rounded-md flex items-center border border-emerald-500/30">
+          <div className="absolute bottom-2 left-2 px-2.5 py-1 bg-emerald-950/80 text-emerald-400 text-xs rounded-md flex items-center border border-emerald-500/30 font-bold">
             <Check className="w-3.5 h-3.5 mr-1" /> Media Attached
           </div>
         </div>
       ) : (
-        <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-slate-700 rounded-xl bg-slate-900/60 hover:border-cyan-500/50 hover:bg-slate-900 transition cursor-pointer">
-          <Camera className="w-8 h-8 text-cyan-400 mb-2" />
-          <span className="text-sm text-slate-300 font-medium">Click to take photo or upload file</span>
-          <span className="text-xs text-slate-500 mt-1">Supports JPG, PNG, MP4</span>
+        <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-[var(--border-subtle)] rounded-2xl bg-[var(--bg-input)] hover:border-sky-500/50 transition cursor-pointer">
+          <Camera className="w-7 h-7 text-sky-500 mb-1.5" />
+          <span className="text-xs text-[var(--text-primary)] font-bold">Attach Photo / Video</span>
+          <span className="text-[10px] text-[var(--text-muted)] mt-0.5">EXIF metadata verification enabled</span>
           <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
         </label>
       )}
