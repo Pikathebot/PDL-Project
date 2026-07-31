@@ -10,6 +10,8 @@ async def lifespan(app: FastAPI):
     yield
     # Shutdown tasks (closing connections)
 
+from backend.app.api.v1.router import api_router
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
@@ -25,6 +27,8 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/health", tags=["Health"])
 async def health_check():
