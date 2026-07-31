@@ -1,0 +1,20 @@
+default_provider: llamacpp
+
+providers:
+  llamacpp:
+    model_path: models/gemma-4-e4b-qat.gguf
+    n_ctx: 4096
+    n_threads: 6
+    n_gpu_layers: -1
+    temperature: 0.2
+
+  lmstudio:
+    api_url: http://localhost:1234/v1
+    model_name: gemma-4-e4b-qat
+    temperature: 0.2
+
+  openai:
+    api_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    model_name: gpt-4o-mini
+    temperature: 0.2
