@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio, Search } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio, Activity, Users, Layers, Maximize2, Layout } from 'lucide-react';
 
 import CitizenReportForm from './components/citizen/CitizenReportForm';
 import ReportStatusTracker from './components/citizen/ReportStatusTracker';
@@ -14,22 +14,22 @@ function CitizenView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-center space-x-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 max-w-xs mx-auto">
+      <div className="flex justify-center space-x-2 bg-[#111726]/80 p-1.5 rounded-xl border border-slate-800/80 max-w-xs mx-auto">
         <button
           onClick={() => setTab('report')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-            tab === 'report' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition ${
+            tab === 'report' ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Report Hazard
+          REPORT HAZARD
         </button>
         <button
           onClick={() => setTab('track')}
-          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
-            tab === 'track' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+          className={`px-4 py-1.5 rounded-lg text-xs font-bold tracking-wide transition ${
+            tab === 'track' ? 'bg-sky-500 text-slate-950 shadow-lg shadow-sky-500/20' : 'text-slate-400 hover:text-slate-200'
           }`}
         >
-          Track Status
+          TRACK STATUS
         </button>
       </div>
 
@@ -41,7 +41,7 @@ function CitizenView() {
 function DispatcherDashboardView() {
   const [incidents, setIncidents] = useState([]);
   const [selectedIncident, setSelectedIncident] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [fullMapMode, setFullMapMode] = useState(false);
 
   const loadData = async () => {
     try {
@@ -52,14 +52,12 @@ function DispatcherDashboardView() {
       }
     } catch (err) {
       console.error(err);
-    } finally {
-      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 10000); // Polling every 10s for baremetal prototype
+    const interval = setInterval(loadData, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -68,47 +66,99 @@ function DispatcherDashboardView() {
     setSelectedIncident(updated);
   };
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 space-y-6">
-        <div className="glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold flex items-center space-x-2">
-              <MapPin className="w-5 h-5 text-cyan-400" />
-              <span>Live Geospatial Map</span>
-            </h2>
-            <span className="flex items-center text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-500/30">
-              <Radio className="w-3 h-3 mr-1 animate-pulse" /> Active Monitoring
-            </span>
-          </div>
+  const emergencyCount = incidents.filter((i) => i.severity >= 4).length;
 
-          <IncidentMap
-            incidents={incidents}
-            selectedIncident={selectedIncident}
-            onSelectIncident={setSelectedIncident}
-          />
+  return (
+    <div className="space-y-4">
+      {/* Tactical Telemetry Metrics Header Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-sky-500">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-mono block">ACTIVE HAZARDS</span>
+            <span className="text-xl font-extrabold text-slate-100 font-mono">{incidents.length}</span>
+          </div>
+          <Activity className="w-5 h-5 text-sky-400 opacity-80" />
         </div>
 
-        {selectedIncident && (
-          <IncidentDetailPanel
-            incident={selectedIncident}
-            onClose={() => setSelectedIncident(null)}
-            onUpdate={handleUpdate}
-          />
-        )}
+        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-red-500">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-mono block">CRITICAL EMERGENCIES</span>
+            <span className="text-xl font-extrabold text-red-400 font-mono">{emergencyCount}</span>
+          </div>
+          <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse" />
+        </div>
+
+        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-emerald-500">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-mono block">ONLINE RESPONDERS</span>
+            <span className="text-xl font-extrabold text-emerald-400 font-mono">14 UNITS</span>
+          </div>
+          <Users className="w-5 h-5 text-emerald-400 opacity-80" />
+        </div>
+
+        <div className="glass-panel p-3.5 rounded-xl flex items-center justify-between border-l-4 border-l-amber-500">
+          <div>
+            <span className="text-[10px] text-slate-400 uppercase font-mono block">AVG SLA RESOLUTION</span>
+            <span className="text-xl font-extrabold text-amber-400 font-mono">18.4 MIN</span>
+          </div>
+          <Layers className="w-5 h-5 text-amber-400 opacity-80" />
+        </div>
       </div>
 
-      <div className="glass-panel p-4 sm:p-6 rounded-2xl space-y-4">
-        <h2 className="text-lg font-semibold border-b border-slate-800 pb-3 flex items-center justify-between">
-          <span>Priority Triage Queue</span>
-          <span className="text-[10px] px-2 py-0.5 bg-slate-800 rounded-md text-slate-400 font-mono">Heap Ranked</span>
-        </h2>
+      {/* Main Command Center Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-[550px]">
+        <div className={`${fullMapMode ? 'lg:col-span-3' : 'lg:col-span-2'} flex flex-col space-y-4`}>
+          <div className="glass-panel p-4 rounded-2xl flex-1 flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="w-5 h-5 text-sky-400" />
+                <h2 className="text-base font-bold text-slate-100 uppercase tracking-wider">Geospatial Tactical Map</h2>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <span className="flex items-center text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-md border border-emerald-500/30">
+                  <Radio className="w-3 h-3 mr-1 animate-pulse" /> LIVE TELEMETRY
+                </span>
+                <button
+                  onClick={() => setFullMapMode(!fullMapMode)}
+                  className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-sky-400 transition"
+                  title="Toggle Full Map Mode"
+                >
+                  {fullMapMode ? <Layout className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
-        <IncidentQueue
-          incidents={incidents}
-          selectedIncident={selectedIncident}
-          onSelectIncident={setSelectedIncident}
-        />
+            <IncidentMap
+              incidents={incidents}
+              selectedIncident={selectedIncident}
+              onSelectIncident={setSelectedIncident}
+            />
+          </div>
+
+          {selectedIncident && (
+            <IncidentDetailPanel
+              incident={selectedIncident}
+              onClose={() => setSelectedIncident(null)}
+              onUpdate={handleUpdate}
+            />
+          )}
+        </div>
+
+        {!fullMapMode && (
+          <div className="glass-panel p-4 rounded-2xl space-y-3 flex flex-col">
+            <h2 className="text-sm font-bold border-b border-slate-800 pb-2.5 flex items-center justify-between uppercase tracking-wider">
+              <span>Heap Priority Queue</span>
+              <span className="text-[10px] px-2 py-0.5 bg-slate-900 rounded border border-slate-800 text-sky-400 font-mono">LIVE SORT</span>
+            </h2>
+
+            <IncidentQueue
+              incidents={incidents}
+              selectedIncident={selectedIncident}
+              onSelectIncident={setSelectedIncident}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -116,11 +166,11 @@ function DispatcherDashboardView() {
 
 function AnalyticsView() {
   return (
-    <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto">
-      <BarChart3 className="w-12 h-12 text-cyan-400 mx-auto" />
-      <h2 className="text-xl font-bold text-slate-100">Analytics & SLA Trends Engine</h2>
-      <p className="text-slate-400 text-sm">
-        Geographic hotspot heatmaps, peak incident frequency, and response workload distribution will render here.
+    <div className="glass-panel p-10 rounded-2xl space-y-4 text-center max-w-xl mx-auto border border-sky-500/20">
+      <BarChart3 className="w-14 h-14 text-sky-400 mx-auto" />
+      <h2 className="text-2xl font-bold text-slate-100">Analytics & SLA Trends Engine</h2>
+      <p className="text-slate-400 text-sm leading-relaxed">
+        Spatial density heatmaps, SLA trend graphs, peak hours distribution, and responder workload analysis.
       </p>
     </div>
   );
@@ -137,40 +187,41 @@ export default function App() {
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3">
+    <div className="min-h-screen flex flex-col bg-[#0a0e17]">
+      {/* Tactical Header */}
+      <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-2.5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
-            <div className="p-2 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl text-white shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition">
-              <Shield className="w-6 h-6" />
+            <div className="p-2 bg-gradient-to-tr from-sky-500 to-blue-600 rounded-xl text-slate-950 shadow-lg shadow-sky-500/20 group-hover:scale-105 transition font-extrabold">
+              <Shield className="w-5 h-5 fill-slate-950" />
             </div>
             <div>
-              <span className="font-extrabold text-lg tracking-wider text-slate-100 uppercase">Sentinel</span>
-              <span className="text-[10px] block text-cyan-400 font-mono tracking-widest uppercase">Public Safety AI</span>
+              <span className="font-extrabold text-lg tracking-wider text-slate-100 uppercase">SENTINEL</span>
+              <span className="text-[9px] block text-sky-400 font-mono tracking-widest uppercase">TACTICAL COMMAND & DISPATCH</span>
             </div>
           </Link>
 
-          <nav className="flex items-center space-x-1 sm:space-x-4 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
+          <nav className="flex items-center space-x-1 sm:space-x-2 bg-[#111726] p-1 rounded-xl border border-slate-800">
             <Link
               to="/"
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                location.pathname === '/' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
+                location.pathname === '/' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              Report Hazard
+              Citizen App
             </Link>
             <Link
               to="/dashboard"
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                location.pathname === '/dashboard' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
+                location.pathname === '/dashboard' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Dispatcher Hub
             </Link>
             <Link
               to="/analytics"
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
-                location.pathname === '/analytics' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition ${
+                location.pathname === '/analytics' ? 'bg-sky-500/20 text-sky-400 border border-sky-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               Analytics
@@ -179,7 +230,7 @@ export default function App() {
 
           <button
             onClick={toggleTheme}
-            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-cyan-400 transition"
+            className="p-2 rounded-xl bg-[#111726] border border-slate-800 text-slate-400 hover:text-sky-400 transition"
             aria-label="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -187,6 +238,7 @@ export default function App() {
         </div>
       </header>
 
+      {/* Main Command Center Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <Routes>
           <Route path="/" element={<CitizenView />} />
