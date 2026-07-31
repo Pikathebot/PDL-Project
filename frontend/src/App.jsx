@@ -1,53 +1,114 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio } from 'lucide-react';
+import { Shield, MapPin, AlertTriangle, BarChart3, Sun, Moon, Radio, Search } from 'lucide-react';
 
-function CitizenReportView() {
+import CitizenReportForm from './components/citizen/CitizenReportForm';
+import ReportStatusTracker from './components/citizen/ReportStatusTracker';
+import IncidentMap from './components/dashboard/IncidentMap';
+import IncidentQueue from './components/dashboard/IncidentQueue';
+import IncidentDetailPanel from './components/dashboard/IncidentDetailPanel';
+import { fetchIncidents } from './services/api';
+
+function CitizenView() {
+  const [tab, setTab] = useState('report');
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="glass-panel p-6 rounded-2xl border border-cyan-500/20 shadow-xl shadow-cyan-950/30">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="p-3 bg-cyan-500/10 rounded-xl text-cyan-400">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-slate-100">Report an Incident</h2>
-            <p className="text-sm text-slate-400">Provide photos, audio, or description. AI handles instant verification & triage.</p>
-          </div>
-        </div>
-        <div className="p-8 border-2 border-dashed border-slate-700 rounded-xl text-center hover:border-cyan-500/50 transition cursor-pointer bg-slate-900/50">
-          <p className="text-slate-300 font-medium">Tap to capture or upload photo / video</p>
-          <p className="text-xs text-slate-500 mt-1">Automatic EXIF & AI-gen verification will execute on submit</p>
-        </div>
+    <div className="space-y-6">
+      <div className="flex justify-center space-x-2 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800 max-w-xs mx-auto">
+        <button
+          onClick={() => setTab('report')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+            tab === 'report' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Report Hazard
+        </button>
+        <button
+          onClick={() => setTab('track')}
+          className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition ${
+            tab === 'track' ? 'bg-cyan-500 text-slate-950 shadow-md' : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          Track Status
+        </button>
       </div>
+
+      {tab === 'report' ? <CitizenReportForm /> : <ReportStatusTracker />}
     </div>
   );
 }
 
 function DispatcherDashboardView() {
+  const [incidents, setIncidents] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const list = await fetchIncidents({});
+      setIncidents(list);
+      if (list.length > 0 && !selectedIncident) {
+        setSelectedIncident(list[0]);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 10000); // Polling every 10s for baremetal prototype
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleUpdate = (updated) => {
+    setIncidents((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    setSelectedIncident(updated);
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 glass-panel p-6 rounded-2xl min-h-[400px] flex flex-col justify-between">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold flex items-center space-x-2">
-            <MapPin className="w-5 h-5 text-cyan-400" />
-            <span>Live Geospatial Map</span>
-          </h2>
-          <span className="flex items-center text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-500/30">
-            <Radio className="w-3 h-3 mr-1 animate-pulse" /> Live Feed
-          </span>
+      <div className="lg:col-span-2 space-y-6">
+        <div className="glass-panel p-4 sm:p-6 rounded-2xl flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold flex items-center space-x-2">
+              <MapPin className="w-5 h-5 text-cyan-400" />
+              <span>Live Geospatial Map</span>
+            </h2>
+            <span className="flex items-center text-xs text-emerald-400 bg-emerald-950/50 px-2.5 py-1 rounded-full border border-emerald-500/30">
+              <Radio className="w-3 h-3 mr-1 animate-pulse" /> Active Monitoring
+            </span>
+          </div>
+
+          <IncidentMap
+            incidents={incidents}
+            selectedIncident={selectedIncident}
+            onSelectIncident={setSelectedIncident}
+          />
         </div>
-        <div className="bg-slate-900/80 rounded-xl h-72 flex items-center justify-center border border-slate-800 text-slate-500">
-          Leaflet Interactive Map Loading...
-        </div>
+
+        {selectedIncident && (
+          <IncidentDetailPanel
+            incident={selectedIncident}
+            onClose={() => setSelectedIncident(null)}
+            onUpdate={handleUpdate}
+          />
+        )}
       </div>
 
-      <div className="glass-panel p-6 rounded-2xl space-y-4">
+      <div className="glass-panel p-4 sm:p-6 rounded-2xl space-y-4">
         <h2 className="text-lg font-semibold border-b border-slate-800 pb-3 flex items-center justify-between">
           <span>Priority Triage Queue</span>
-          <span className="text-xs px-2 py-0.5 bg-slate-800 rounded-md text-slate-400">Heap Ordered</span>
+          <span className="text-[10px] px-2 py-0.5 bg-slate-800 rounded-md text-slate-400 font-mono">Heap Ranked</span>
         </h2>
-        <div className="text-sm text-slate-400 italic">No incoming emergency incidents reported yet.</div>
+
+        <IncidentQueue
+          incidents={incidents}
+          selectedIncident={selectedIncident}
+          onSelectIncident={setSelectedIncident}
+        />
       </div>
     </div>
   );
@@ -55,12 +116,12 @@ function DispatcherDashboardView() {
 
 function AnalyticsView() {
   return (
-    <div className="glass-panel p-6 rounded-2xl space-y-4">
-      <h2 className="text-xl font-bold text-slate-100 flex items-center space-x-2">
-        <BarChart3 className="w-6 h-6 text-cyan-400" />
-        <span>Incident Analytics & SLA Trends</span>
-      </h2>
-      <p className="text-slate-400 text-sm">Response efficiency, geographic cluster heatmaps, and priority logs.</p>
+    <div className="glass-panel p-8 rounded-2xl space-y-4 text-center max-w-xl mx-auto">
+      <BarChart3 className="w-12 h-12 text-cyan-400 mx-auto" />
+      <h2 className="text-xl font-bold text-slate-100">Analytics & SLA Trends Engine</h2>
+      <p className="text-slate-400 text-sm">
+        Geographic hotspot heatmaps, peak incident frequency, and response workload distribution will render here.
+      </p>
     </div>
   );
 }
@@ -73,11 +134,10 @@ export default function App() {
     document.documentElement.className = theme;
   }, [theme]);
 
-  const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Navigation Shell */}
       <header className="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-3">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center space-x-3 group">
@@ -93,7 +153,7 @@ export default function App() {
           <nav className="flex items-center space-x-1 sm:space-x-4 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800">
             <Link
               to="/"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 location.pathname === '/' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -101,7 +161,7 @@ export default function App() {
             </Link>
             <Link
               to="/dashboard"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 location.pathname === '/dashboard' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -109,7 +169,7 @@ export default function App() {
             </Link>
             <Link
               to="/analytics"
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
                 location.pathname === '/analytics' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -127,10 +187,9 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <Routes>
-          <Route path="/" element={<CitizenReportView />} />
+          <Route path="/" element={<CitizenView />} />
           <Route path="/dashboard" element={<DispatcherDashboardView />} />
           <Route path="/analytics" element={<AnalyticsView />} />
         </Routes>
