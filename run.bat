@@ -7,23 +7,23 @@ echo         SENTINEL PUBLIC SAFETY PLATFORM LAUNCHER
 echo ============================================================
 echo.
 
-:: Check if Docker is installed and running
+:: Check Docker Daemon
 docker info >nul 2>&1
-IF %ERRORLEVEL% EQU 0 (
+if %errorlevel%==0 (
     echo [OK] Docker daemon detected.
     echo Starting Sentinel containers via Docker Compose...
     echo.
     docker compose -f docker-compose.dev.yml up -d
     echo.
     echo [INFO] Infrastructure services (PostgreSQL, Redis, MinIO) started.
-) ELSE (
+) else (
     echo [WARNING] Docker daemon is not running or not installed.
-    echo Proceeding with standalone local Python & Node execution...
+    echo Proceeding with standalone local Python and Node execution...
     echo.
 )
 
-:: Check if virtual environment exists
-IF NOT EXIST ".venv" (
+:: Check Virtual Environment
+if not exist ".venv" (
     echo [INFO] Creating Python virtual environment...
     python -m venv .venv
     echo [INFO] Installing Python backend dependencies...
@@ -33,26 +33,24 @@ IF NOT EXIST ".venv" (
 :: Ensure aiofiles is installed
 call .venv\Scripts\pip install aiofiles >nul 2>&1
 
-:: Check node_modules in frontend
-IF NOT EXIST "frontend\node_modules" (
+:: Check Frontend node_modules
+if not exist "frontend\node_modules" (
     echo [INFO] Installing Frontend npm dependencies...
-    cd frontend
-    call npm install
-    cd ..
+    cmd /c "cd frontend && npm install"
 )
 
 echo.
 echo ============================================================
 echo Launching Services:
 echo   - Backend Server: http://localhost:8000
-echo   - Citizen & Dispatcher UI: http://localhost:5173
+echo   - Citizen and Dispatcher UI: http://localhost:5173
 echo ============================================================
 echo.
 
-:: Start FastAPI Backend Server in a new window
+:: Launch Backend
 start "Sentinel FastAPI Backend" cmd /k ".venv\Scripts\python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000"
 
-:: Start Frontend Vite Dev Server in a new window
+:: Launch Frontend
 start "Sentinel React Frontend" cmd /k "cd frontend && npm run dev"
 
 echo All services launched!
