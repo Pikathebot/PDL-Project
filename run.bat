@@ -7,38 +7,41 @@ echo         SENTINEL PUBLIC SAFETY PLATFORM LAUNCHER
 echo ============================================================
 echo.
 
-:: Check Docker Daemon
 docker info >nul 2>&1
-if %errorlevel%==0 (
-    echo [OK] Docker daemon detected.
-    echo Starting Sentinel containers via Docker Compose...
-    echo.
-    docker compose -f docker-compose.dev.yml up -d
-    echo.
-    echo [INFO] Infrastructure services (PostgreSQL, Redis, MinIO) started.
-) else (
-    echo [WARNING] Docker daemon is not running or not installed.
-    echo Proceeding with standalone local Python and Node execution...
-    echo.
-)
+if %errorlevel% neq 0 goto NODOCKER
 
-:: Check Virtual Environment
-if not exist ".venv" (
-    echo [INFO] Creating Python virtual environment...
-    python -m venv .venv
-    echo [INFO] Installing Python backend dependencies...
-    call .venv\Scripts\pip install -r backend\requirements.txt
-)
+echo [OK] Docker daemon detected.
+echo Starting Sentinel containers via Docker Compose...
+echo.
+docker compose -f docker-compose.dev.yml up -d
+echo.
+echo [INFO] Infrastructure services started.
+goto CHECKVENV
 
-:: Ensure aiofiles is installed
+:NODOCKER
+echo [WARNING] Docker daemon is not running or not installed.
+echo Proceeding with standalone local Python and Node execution...
+echo.
+
+:CHECKVENV
+if exist ".venv" goto CHECKFRONTEND
+
+echo [INFO] Creating Python virtual environment...
+python -m venv .venv
+echo [INFO] Installing Python backend dependencies...
+call .venv\Scripts\pip install -r backend\requirements.txt
+
+:CHECKFRONTEND
 call .venv\Scripts\pip install aiofiles >nul 2>&1
 
-:: Check Frontend node_modules
-if not exist "frontend\node_modules" (
-    echo [INFO] Installing Frontend npm dependencies...
-    cmd /c "cd frontend && npm install"
-)
+if exist "frontend\node_modules" goto LAUNCH
 
+echo [INFO] Installing Frontend npm dependencies...
+cd frontend
+call npm install
+cd ..
+
+:LAUNCH
 echo.
 echo ============================================================
 echo Launching Services:
@@ -47,10 +50,7 @@ echo   - Citizen and Dispatcher UI: http://localhost:5173
 echo ============================================================
 echo.
 
-:: Launch Backend
 start "Sentinel FastAPI Backend" cmd /k ".venv\Scripts\python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000"
-
-:: Launch Frontend
 start "Sentinel React Frontend" cmd /k "cd frontend && npm run dev"
 
 echo All services launched!
