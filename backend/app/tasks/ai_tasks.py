@@ -1,6 +1,7 @@
 import asyncio
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.tasks.celery_app import celery_app
 from backend.app.core.db import SessionLocal
@@ -17,37 +18,44 @@ def process_incident_ai(incident_id: int):
     """
     asyncio.run(_async_process(incident_id))
 
-async def _async_process(incident_id: int):
-    async with SessionLocal() as session:
-        res = await session.execute(
-            select(Incident)
-            .options(selectinload(Incident.media_attachments))
-            .where(Incident.id == incident_id)
-        )
-        incident = res.scalar_one_or_none()
-        if not incident:
-            return
+async def _async_process(incident_id: int, session: AsyncSession = None):
+    if session:
+        await _process_incident(incident_id, session)
+    else:
+        async with SessionLocal() as db_session:
+            await _process_incident(incident_id, db_session)
 
-        incident.status = IncidentStatus.AI_PROCESSING
-        await session.commit()
+async def _process_incident(incident_id: int, session: AsyncSession):
+    res = await session.execute(
+        select(Incident)
+        .options(selectinload(Incident.media_attachments))
+        .where(Incident.id == incident_id)
+    )
+    incident = res.scalar_one_or_none()
+    if not incident:
+        return
 
-        # 1. Vision Detection (if media present)
-        detector_res = {}
-        if incident.media_attachments:
-            media_path = incident.media_attachments[0].file_path
-            detector_res = yolo_detector.detect(media_path)
-            incident.ai_classification = detector_res.get("hazard_label", "Hazard")
-            incident.ai_confidence = detector_res.get("highest_confidence", 0.8)
-            incident.severity = detector_res.get("estimated_severity", incident.severity)
+    incident.status = IncidentStatus.AI_PROCESSING
+    await session.commit()
 
-        # 2. LLM Extraction
-        extracted_details = await llm_extractor.extract_details(incident.description)
-        incident.structured_details = extracted_details
+    # 1. Vision Detection (if media present)
+    detector_res = {}
+    if incident.media_attachments:
+        media_path = incident.media_attachments[0].file_path
+        detector_res = yolo_detector.detect(media_path)
+        incident.ai_classification = detector_res.get("hazard_label", "Hazard")
+        incident.ai_confidence = detector_res.get("highest_confidence", 0.8)
+        incident.severity = detector_res.get("estimated_severity", incident.severity)
 
-        # 3. Vector Embedding
-        vec = embeddings_engine.generate_embedding(incident.description)
-        incident.embedding_json = {"vector": vec}
+    # 2. LLM Extraction
+    extracted_details = await llm_extractor.extract_details(incident.description)
+    incident.structured_details = extracted_details
 
-        # Update status to VERIFIED
-        incident.status = IncidentStatus.VERIFIED
-        await session.commit()
+    # 3. Vector Embedding
+    vec = embeddings_engine.generate_embedding(incident.description)
+    incident.embedding_json = {"vector": vec}
+
+    # Update status to VERIFIED
+    incident.status = IncidentStatus.VERIFIED
+    await session.commit()
+
