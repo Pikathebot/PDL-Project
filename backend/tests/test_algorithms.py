@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import pytest
 from backend.app.algorithms.union_find import UnionFind, haversine_distance, cosine_similarity, evaluate_incident_duplication
 from backend.app.algorithms.priority_queue import calculate_priority_score, IncidentPriorityQueue
 from backend.app.algorithms.kd_tree import KDTree
@@ -25,6 +26,20 @@ def test_priority_score_formula():
     high_priority = calculate_priority_score(severity=5, corroboration_count=8, time_in_queue_hours=2.0, category="fire")
     low_priority = calculate_priority_score(severity=1, corroboration_count=1, time_in_queue_hours=0.1, category="infrastructure_damage")
     assert high_priority > low_priority
+
+def test_priority_queue_push_pop():
+    queue = IncidentPriorityQueue()
+    queue.push({"id": 1, "severity": 5, "corroboration_count": 8, "time_in_queue_hours": 2.0, "category": "fire"})
+    queue.push({"id": 2, "severity": 1, "corroboration_count": 1, "time_in_queue_hours": 0.1, "category": "infrastructure_damage"})
+    assert queue.pop()["id"] == 1
+    assert queue.pop()["id"] == 2
+    with pytest.raises(IndexError):
+        queue.pop()
+
+def test_priority_queue_empty_pop_raises():
+    queue = IncidentPriorityQueue()
+    with pytest.raises(IndexError):
+        queue.pop()
 
 def test_kd_tree_responder_matching():
     responders = [

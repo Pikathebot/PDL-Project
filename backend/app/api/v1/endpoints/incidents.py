@@ -1,4 +1,5 @@
 import uuid
+import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,9 @@ from backend.app.models.incident import Incident, IncidentCategory, IncidentStat
 from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
 from backend.app.schemas.incident import IncidentRead, IncidentUpdateStatus
 from backend.app.services.storage import storage_service
+from backend.app.tasks.ai_tasks import process_incident_ai
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -43,7 +47,7 @@ async def create_incident(
 
     for upload_file in files:
         if upload_file.filename:
-            file_url = await storage_service.save_file(upload_file)
+            file_url, file_size = await storage_service.save_file(upload_file)
             mtype = MediaType.IMAGE
             if upload_file.content_type and "video" in upload_file.content_type:
                 mtype = MediaType.VIDEO
@@ -54,12 +58,19 @@ async def create_incident(
                 incident_id=incident.id,
                 file_path=file_url,
                 media_type=mtype,
-                file_size_bytes=upload_file.size or 0,
+                file_size_bytes=file_size,
                 validation_status=ValidationStatus.PENDING
             )
             db.add(media_attachment)
 
     await db.commit()
+
+    # Fire-and-forget AI processing (vision, extraction, embeddings).
+    # If the broker is down, the report is still saved and can be retried later.
+    try:
+        process_incident_ai.delay(incident.id)
+    except Exception:
+        logger.exception("Failed to enqueue AI processing for incident %s", incident.id)
 
     # Re-fetch with media attachments loaded
     res = await db.execute(

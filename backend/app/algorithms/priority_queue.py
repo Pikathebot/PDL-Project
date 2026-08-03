@@ -48,7 +48,7 @@ class IncidentPriorityQueue:
         # Store negative score for max-heap behavior via min-heap
         heapq.heappush(self._heap, (-score, incident["id"], incident))
 
-    def pop() -> Dict[str, Any]:
+    def pop(self) -> Dict[str, Any]:
         if not self._heap:
             raise IndexError("Pop from an empty priority queue")
         _, _, incident = heapq.heappop(self._heap)

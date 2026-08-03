@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import settings
 
@@ -29,6 +31,10 @@ if settings.BACKEND_CORS_ORIGINS:
     )
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+media_dir = os.path.join(os.getcwd(), "media_uploads")
+os.makedirs(media_dir, exist_ok=True)
+app.mount("/media_uploads", StaticFiles(directory=media_dir), name="media_uploads")
 
 @app.get("/health", tags=["Health"])
 async def health_check():

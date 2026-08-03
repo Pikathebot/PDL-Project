@@ -55,10 +55,11 @@ export default function ReportStatusTracker() {
         />
         <button
           type="submit"
-          className="px-6 py-3 bg-sky-500 text-slate-950 font-bold rounded-2xl hover:bg-sky-400 transition shadow flex items-center space-x-1 uppercase tracking-wider text-xs"
+          disabled={loading}
+          className="px-6 py-3 bg-sky-500 text-slate-950 font-bold rounded-2xl hover:bg-sky-400 transition shadow flex items-center space-x-1 uppercase tracking-wider text-xs disabled:opacity-60 disabled:cursor-not-allowed"
         >
           <Search className="w-4 h-4" />
-          <span>Track</span>
+          <span>{loading ? 'Searching...' : 'Track'}</span>
         </button>
       </form>
 

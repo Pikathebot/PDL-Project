@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserCheck, CheckCircle, ShieldCheck, FileText, Cpu } from 'lucide-react';
+import { X, Cpu } from 'lucide-react';
 import { updateIncidentStatus } from '../../services/api';
 
 const STATUS_OPTIONS = [

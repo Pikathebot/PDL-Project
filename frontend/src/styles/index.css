@@ -1,19 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @layer base {
   :root {
-    --bg-app: #070a11;
-    --bg-[#111726]: #0d121d;
-    --bg-card: rgba(15, 22, 36, 0.85);
-    --bg-card-hover: rgba(22, 32, 52, 0.9);
-    --bg-input: #111827;
+    /* Dark Theme Tokens (Apple Dark + Samsung Neon Accents) */
+    --bg-app: #080b11;
+    --bg-surface: #0f1623;
+    --bg-card: #131c2d;
+    --bg-card-hover: #182337;
+    --bg-input: #0b111a;
+    
     --text-primary: #f8fafc;
     --text-secondary: #94a3b8;
     --text-muted: #64748b;
+    
     --border-subtle: rgba(255, 255, 255, 0.08);
     --border-strong: rgba(56, 189, 248, 0.3);
+    --accent-glow: rgba(56, 189, 248, 0.15);
     
-    --shadow-panel: 0 12px 32px 0 rgba(0, 0, 0, 0.5);
+    --shadow-panel: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+    --shadow-card: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
     
     /* Map Popup Dark */
     --map-popup-bg: #0f172a;
@@ -22,18 +28,23 @@
   }
 
   .light {
-    --bg-app: #f1f5f9;
-    --bg-[#111726]: #ffffff;
-    --bg-card: rgba(255, 255, 255, 0.95);
-    --bg-card-hover: rgba(241, 245, 249, 1);
-    --bg-input: #f8fafc;
+    /* Light Theme Tokens (Apple Minimal White + Google Material Tones) */
+    --bg-app: #f4f6f9;
+    --bg-surface: #ffffff;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f8fafc;
+    --bg-input: #f1f5f9;
+    
     --text-primary: #0f172a;
     --text-secondary: #475569;
     --text-muted: #94a3b8;
-    --border-subtle: rgba(0, 0, 0, 0.1);
-    --border-strong: rgba(2, 132, 199, 0.4);
     
-    --shadow-panel: 0 10px 30px -5px rgba(0, 0, 0, 0.1);
+    --border-subtle: rgba(15, 23, 42, 0.08);
+    --border-strong: rgba(2, 132, 199, 0.3);
+    --accent-glow: rgba(2, 132, 199, 0.08);
+    
+    --shadow-panel: 0 20px 40px -15px rgba(15, 23, 42, 0.08);
+    --shadow-card: 0 8px 24px -6px rgba(15, 23, 42, 0.06);
     
     /* Map Popup Light */
     --map-popup-bg: #ffffff;
@@ -45,23 +56,23 @@
 body {
   background-color: var(--bg-app);
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
 }
 
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .font-mono, code, pre {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Theme-adaptive glass panel */
+/* Apple & Samsung Style Surface Panels */
 .theme-panel {
   background-color: var(--bg-card);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-panel);
   transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
@@ -70,32 +81,49 @@ h1, h2, h3, h4, h5, h6 {
 .theme-card {
   background-color: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  transition: all 0.2s ease-in-out;
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .theme-card:hover {
   background-color: var(--bg-card-hover);
   border-color: var(--border-strong);
+  transform: translateY(-2px);
 }
 
 .theme-input {
   background-color: var(--bg-input);
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .theme-input:focus {
   border-color: #0284c7;
+  box-shadow: 0 0 0 3px var(--accent-glow);
   outline: none;
 }
 
-/* Emergency radar pulse */
+/* Pill badge styling (Samsung/Pixel style) */
+.pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  transition: all 0.2s ease;
+}
+
+/* Radar pulse animation */
 @keyframes radar-pulse {
   0% {
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
   }
   70% {
-    box-shadow: 0 0 0 18px rgba(239, 68, 68, 0);
+    box-shadow: 0 0 0 16px rgba(239, 68, 68, 0);
   }
   100% {
     box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
@@ -103,7 +131,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .radar-emergency {
-  animation: radar-pulse 2s infinite ease-out;
+  animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
 }
 
 /* Leaflet map popup theme adaptation */
@@ -111,8 +139,8 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--map-popup-bg) !important;
   color: var(--map-popup-text) !important;
   border: 1px solid var(--map-popup-border);
-  border-radius: 12px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.3);
 }
 
 .custom-popup .leaflet-popup-tip {
@@ -129,8 +157,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.25);
-  border-radius: 4px;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.45);
 }
+

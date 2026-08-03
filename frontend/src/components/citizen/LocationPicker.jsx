@@ -8,7 +8,7 @@ export default function LocationPicker({ onLocationChange }) {
 
   useEffect(() => {
     onLocationChange({ ...coords, location_name: address });
-  }, [coords, address]);
+  }, [coords, address, onLocationChange]);
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
@@ -23,7 +23,7 @@ export default function LocationPicker({ onLocationChange }) {
         setAddress(`GPS (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
         setLoading(false);
       },
-      (err) => {
+      () => {
         alert('Could not detect location automatically. Please enter location manually.');
         setLoading(false);
       }

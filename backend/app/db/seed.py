@@ -22,19 +22,19 @@ async def seed_data():
         admin = User(
             name="Admin User",
             email="admin@sentinel.gov",
-            password_hash="$2b$12$eImiTXuWVxfM37uY4JANjO5E/15y32v6/5r1p.Qh85Uu/815y32v6",  # admin123
+            password_hash="$2b$12$A/RK0UnYiP4utLNO9gVI9OZ1V8t/dNC6lhfsXHLjAfZN.Zq8Oh4Gq",  # admin123
             role=UserRole.ADMIN
         )
         dispatcher = User(
             name="Control Dispatcher 1",
             email="dispatcher@sentinel.gov",
-            password_hash="$2b$12$eImiTXuWVxfM37uY4JANjO5E/15y32v6/5r1p.Qh85Uu/815y32v6",
+            password_hash="$2b$12$A/RK0UnYiP4utLNO9gVI9OZ1V8t/dNC6lhfsXHLjAfZN.Zq8Oh4Gq",
             role=UserRole.DISPATCHER
         )
         responder_user = User(
             name="Officer Rahul Sharma",
             email="rahul@sentinel.gov",
-            password_hash="$2b$12$eImiTXuWVxfM37uY4JANjO5E/15y32v6/5r1p.Qh85Uu/815y32v6",
+            password_hash="$2b$12$A/RK0UnYiP4utLNO9gVI9OZ1V8t/dNC6lhfsXHLjAfZN.Zq8Oh4Gq",
             role=UserRole.RESPONDER
         )
         session.add_all([admin, dispatcher, responder_user])
