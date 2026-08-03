@@ -39,3 +39,31 @@ export async function updateIncidentStatus(id, status, assignedResponderId = nul
   }
   return response.json();
 }
+
+export async function fetchNearestResponders(incidentId, limit = 5) {
+  const response = await fetch(`${API_BASE}/incidents/${incidentId}/nearest-responders?limit=${limit}`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch nearest responders');
+  }
+  return response.json();
+}
+
+export async function dispatchResponder(incidentId, responderId) {
+  const response = await fetch(`${API_BASE}/incidents/${incidentId}/dispatch`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ responder_id: responderId }),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to dispatch responder');
+  }
+  return response.json();
+}
+
+export async function fetchAnalyticsSummary() {
+  const response = await fetch(`${API_BASE}/incidents/analytics/summary`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch analytics summary');
+  }
+  return response.json();
+}

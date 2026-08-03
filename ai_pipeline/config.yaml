@@ -18,3 +18,12 @@ providers:
     api_key_env: OPENAI_API_KEY
     model_name: gpt-4o-mini
     temperature: 0.2
+
+verification:
+  max_gps_drift_meters: 500.0
+  require_turnstile: false
+
+models:
+  vision_weights: models/yolov8n.pt
+  nlp_model: models/gemma-4-e4b-qat.gguf
+

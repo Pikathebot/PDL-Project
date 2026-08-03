@@ -1,10 +1,11 @@
 from contextlib import asynccontextmanager
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.app.core.config import settings
+from backend.app.core.websocket_manager import ws_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,6 +36,16 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 media_dir = os.path.join(os.getcwd(), "media_uploads")
 os.makedirs(media_dir, exist_ok=True)
 app.mount("/media_uploads", StaticFiles(directory=media_dir), name="media_uploads")
+
+@app.websocket("/ws/incidents")
+async def websocket_incidents_feed(websocket: WebSocket):
+    await ws_manager.connect(websocket)
+    try:
+        # Keep the connection open; broadcast() pushes incident updates to clients.
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
 
 @app.get("/health", tags=["Health"])
 async def health_check():

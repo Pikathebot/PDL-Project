@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Cpu } from 'lucide-react';
-import { updateIncidentStatus } from '../../services/api';
+import React, { useState, useEffect } from 'react';
+import { X, Cpu, Navigation, Send, CheckCircle2 } from 'lucide-react';
+import { updateIncidentStatus, fetchNearestResponders, dispatchResponder } from '../../services/api';
 
 const STATUS_OPTIONS = [
   'reported',
@@ -14,6 +14,19 @@ const STATUS_OPTIONS = [
 
 export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   const [updating, setUpdating] = useState(false);
+  const [responders, setResponders] = useState([]);
+  const [loadingResponders, setLoadingResponders] = useState(false);
+  const [dispatchingId, setDispatchingId] = useState(null);
+
+  useEffect(() => {
+    if (incident?.id) {
+      setLoadingResponders(true);
+      fetchNearestResponders(incident.id)
+        .then((data) => setResponders(data))
+        .catch(() => setResponders([]))
+        .finally(() => setLoadingResponders(false));
+    }
+  }, [incident?.id]);
 
   if (!incident) return null;
 
@@ -26,6 +39,18 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
       alert('Failed to update incident status.');
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleDispatch = async (responderId) => {
+    setDispatchingId(responderId);
+    try {
+      const updated = await dispatchResponder(incident.id, responderId);
+      onUpdate(updated);
+    } catch (err) {
+      alert('Failed to dispatch responder.');
+    } finally {
+      setDispatchingId(null);
     }
   };
 
@@ -81,6 +106,49 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
             </pre>
           </div>
         )}
+
+        {/* Nearest Responder Dispatch Section (k-d Tree) */}
+        <div className="pt-2 space-y-2 border-t border-[var(--border-subtle)]">
+          <span className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px] flex items-center">
+            <Navigation className="w-3 h-3 mr-1 text-emerald-500" /> Nearest Available Responders (k-d Tree Spatial Index)
+          </span>
+
+          {loadingResponders ? (
+            <p className="text-[10px] text-[var(--text-muted)] italic">Querying spatial index...</p>
+          ) : responders.length === 0 ? (
+            <p className="text-[10px] text-[var(--text-muted)] italic p-2 bg-[var(--bg-input)] rounded-lg">No available responders in radius.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {responders.map((resp) => (
+                <div key={resp.id} className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)] flex items-center justify-between">
+                  <div>
+                    <span className="font-bold text-[var(--text-primary)] block text-xs">{resp.name}</span>
+                    <span className="text-[10px] text-[var(--text-muted)] block">{resp.department} • {resp.distance_km} km away</span>
+                  </div>
+                  <button
+                    disabled={dispatchingId === resp.id || incident.assigned_responder_id === resp.id}
+                    onClick={() => handleDispatch(resp.id)}
+                    className={`py-1 px-2.5 rounded-lg text-[10px] font-bold flex items-center transition border ${
+                      incident.assigned_responder_id === resp.id
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                        : 'bg-sky-500 hover:bg-sky-400 text-slate-950 border-sky-400 font-extrabold shadow'
+                    }`}
+                  >
+                    {incident.assigned_responder_id === resp.id ? (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Dispatched
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-3 h-3 mr-1" /> Dispatch
+                      </>
+                    )}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="pt-3 border-t border-[var(--border-subtle)] space-y-2">
@@ -107,3 +175,4 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
     </div>
   );
 }
+

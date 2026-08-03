@@ -23,7 +23,7 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
     ? [selectedIncident.latitude, selectedIncident.longitude]
     : defaultCenter;
 
-  const [activeLayers, setActiveLayers] = React.useState({ incidents: true, units: true, hazards: true });
+  const [activeLayers, setActiveLayers] = React.useState({ incidents: true, units: true, hazards: true, heatmap: false });
   const [activeFilter, setActiveFilter] = React.useState('all');
 
   const tileUrl = theme === 'light'
@@ -48,6 +48,16 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
             />
             <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_#00f0ff]"></span>
             <span>Incidents</span>
+          </label>
+          <label className="flex items-center space-x-2 cursor-pointer hover:text-amber-400 transition">
+            <input
+              type="checkbox"
+              checked={activeLayers.heatmap}
+              onChange={(e) => setActiveLayers({ ...activeLayers, heatmap: e.target.checked })}
+              className="rounded bg-slate-800 border-slate-600 text-amber-500 focus:ring-0"
+            />
+            <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
+            <span>Heatmap Overlay</span>
           </label>
           <label className="flex items-center space-x-2 cursor-pointer hover:text-emerald-400 transition">
             <input
@@ -101,6 +111,21 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
           maxZoom={19}
         />
         <MapRecenter center={center} />
+
+        {/* Heatmap Spatial Density Layer */}
+        {activeLayers.heatmap && incidents.map((inc) => (
+          <Circle
+            key={`heat-${inc.id}`}
+            center={[inc.latitude, inc.longitude]}
+            radius={inc.severity >= 4 ? 400 : 250}
+            pathOptions={{
+              color: inc.severity >= 4 ? '#ff1744' : inc.severity === 3 ? '#ff9100' : '#00f0ff',
+              fillColor: inc.severity >= 4 ? '#ff1744' : inc.severity === 3 ? '#ff9100' : '#00f0ff',
+              fillOpacity: 0.45,
+              weight: 0
+            }}
+          />
+        ))}
 
         {activeLayers.incidents && incidents.map((inc) => {
           const isEmergency = inc.severity >= 4;
