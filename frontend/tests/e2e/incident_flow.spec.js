@@ -5,24 +5,20 @@ test.describe('Citizen Incident Reporting E2E Flow', () => {
     // 1. Open the homepage
     await page.goto('/');
 
-    // 2. Verify navigation branding header is visible
+    // 2. Verify header title exists
     await expect(page.locator('header')).toContainText(/SENTINEL/i);
 
-    // 3. Fill out the citizen incident report form
-    await page.fill('textarea[placeholder*="Describe what you see"]', 'E2E Test: Heavy water leakage near sub-station.');
-    await page.fill('input[placeholder*="phone"]', '+919876543210');
+    // 3. Fill out the citizen incident report form using exact placeholder text
+    await page.fill('textarea[placeholder*="Describe what happened"]', 'E2E Test: Heavy water leakage near sub-station.');
+    await page.fill('input[placeholder*="98765"]', '+919876543210');
 
-    // Select category dropdown if present
-    const categorySelect = page.locator('select');
-    if (await categorySelect.count() > 0) {
-      await categorySelect.selectOption('electrical_hazard');
+    // Select category button
+    const electricalBtn = page.getByRole('button', { name: /Electrical Hazard/i });
+    if (await electricalBtn.count() > 0) {
+      await electricalBtn.click();
     }
 
-    // 4. Click Submit Incident Report button
-    const submitBtn = page.getByRole('button', { name: /Submit Incident Report/i });
-    await expect(submitBtn).toBeVisible();
-
-    // Mock API response if backend is offline, or allow mock fallback
+    // 4. Mock API route for report submission
     await page.route('**/api/v1/incidents/', async (route) => {
       if (route.request().method() === 'POST') {
         await route.fulfill({
@@ -46,9 +42,12 @@ test.describe('Citizen Incident Reporting E2E Flow', () => {
       }
     });
 
+    // 5. Click Submit Emergency Report button
+    const submitBtn = page.getByRole('button', { name: /Submit Emergency Report/i });
+    await expect(submitBtn).toBeVisible();
     await submitBtn.click();
 
-    // 5. Verify success modal/confirmation displays tracking ID
+    // 6. Verify confirmation displays tracking ID
     await expect(page.locator('body')).toContainText(/INC-E2ETEST99/i);
   });
 });
