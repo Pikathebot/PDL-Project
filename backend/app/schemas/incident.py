@@ -35,3 +35,26 @@ class IncidentRead(IncidentBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class IncidentTrackRead(BaseModel):
+    """
+    Public view of an incident, returned by the tracking-ID lookup.
+
+    Deliberately narrower than IncidentRead: the tracking endpoint is
+    unauthenticated, so it must not echo phone_number back to anyone who
+    guesses a tracking ID. It also drops the dispatcher-only fields
+    (priority_score, assigned_responder_id, cluster_id) that a citizen has no
+    use for.
+    """
+    tracking_id: str
+    category: IncidentCategory
+    description: str
+    location_name: Optional[str] = None
+    status: IncidentStatus
+    severity: int
+    media_attachments: List[MediaAttachmentRead] = []
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

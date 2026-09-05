@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from backend.app.core.db import get_db
 from backend.app.models.incident import Incident, IncidentCategory, IncidentStatus, IncidentCluster
 from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
-from backend.app.schemas.incident import IncidentRead, IncidentUpdateStatus
+from backend.app.schemas.incident import IncidentRead, IncidentTrackRead, IncidentUpdateStatus
 from backend.app.services.storage import storage_service
 from backend.app.tasks.ai_tasks import process_incident_ai
 
@@ -216,6 +216,29 @@ async def list_incidents(
     query = query.offset(offset).limit(limit)
     res = await db.execute(query)
     return res.scalars().all()
+
+@router.get("/track/{tracking_id}", response_model=IncidentTrackRead)
+async def track_incident(tracking_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Look up a single incident by its citizen-facing tracking ID.
+
+    The frontend previously fetched the whole incident list and scanned it in
+    the browser. That list is capped at 50 rows and ordered by priority, so a
+    valid tracking ID for anything outside the top 50 reported back "no
+    incident found" - the report existed, the lookup just could not see it.
+
+    Declared above GET /{incident_id} so the router matches this literal
+    prefix first.
+    """
+    res = await db.execute(
+        select(Incident)
+        .options(selectinload(Incident.media_attachments))
+        .where(func.lower(Incident.tracking_id) == tracking_id.strip().lower())
+    )
+    incident = res.scalar_one_or_none()
+    if not incident:
+        raise HTTPException(status_code=404, detail="No incident found matching that tracking ID.")
+    return incident
 
 @router.get("/{incident_id}", response_model=IncidentRead)
 async def get_incident(incident_id: int, db: AsyncSession = Depends(get_db)):

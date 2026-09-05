@@ -5,7 +5,33 @@ from typing import Dict, List, Tuple, Any
 # they are close in space, close in time, AND semantically similar.
 DUPLICATE_DISTANCE_METERS = 200.0
 DUPLICATE_TIME_WINDOW_SECONDS = 7200.0  # 2 hours
-DUPLICATE_SIMILARITY_THRESHOLD = 0.75
+
+# Calibrated against all-MiniLM-L6-v2 on 8 hand-written duplicate pairs (the same
+# event described by two different citizens) and 8 non-duplicate pairs, including
+# same-category-different-event cases:
+#
+#   duplicates      0.41 0.59 0.67 0.69 0.69 0.73 0.84 0.89
+#   non-duplicates -0.01 0.06 0.09 0.11 0.22 0.22 0.23 0.35
+#
+# 0.55 clears every non-duplicate by ~0.2 and catches 7 of the 8 duplicates. The
+# miss is instructive rather than fixable here: "Live electric wire hanging low"
+# vs "Exposed power line dangling over the street" scores 0.41 - synonymous, but
+# sharing no vocabulary, which is exactly where a 384-dim MiniLM runs out. No
+# threshold catches that pair without also merging unrelated reports, so it stays
+# uncaught and the dispatcher sees two incidents.
+#
+# The old value of 0.75 was tuned against the SHA-256 fallback, whose vectors are
+# all-positive and therefore score ~0.81 for *any* pair of texts. Carried over to
+# real embeddings it landed above most genuine duplicates, so nothing would ever
+# have clustered.
+#
+# The asymmetry is deliberate. Missing a duplicate leaves two incidents on the
+# dispatcher's queue - visible, and a human resolves it. A false merge hides a
+# real emergency behind an unrelated one. When in doubt, do not merge.
+#
+# This constant is tied to the model in ai_pipeline.nlp.embeddings; changing the
+# model means re-running this calibration.
+DUPLICATE_SIMILARITY_THRESHOLD = 0.55
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculates distance between two lat/lon pairs in meters using Haversine formula."""
@@ -75,12 +101,12 @@ def evaluate_incident_duplication(inc1: Dict[str, Any], inc2: Dict[str, Any]) ->
     0. Both sides carry a real semantic embedding
     1. Distance <= 200 meters
     2. Time difference <= 2 hours (7200 seconds)
-    3. Embedding Cosine Similarity >= 0.75
+    3. Embedding Cosine Similarity >= DUPLICATE_SIMILARITY_THRESHOLD
 
     Rule 0 exists because the offline hash fallback in
     ai_pipeline.nlp.embeddings produces all-positive vectors whose pairwise
-    cosine similarity averages ~0.81 for completely unrelated text - above the
-    0.75 threshold. Clustering on those merges a fire report into a pothole
+    cosine similarity averages ~0.81 for completely unrelated text, regardless of
+    the threshold. Clustering on those merges a fire report into a pothole
     report. Refusing to cluster is the correct degradation; guessing is not.
 
     Incidents persisted before provenance was recorded have no `is_semantic`

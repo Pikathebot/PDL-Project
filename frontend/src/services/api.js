@@ -20,10 +20,13 @@ export async function fetchIncidents(params = {}) {
   return response.json();
 }
 
-export async function fetchIncidentById(id) {
-  const response = await fetch(`${API_BASE}/incidents/${id}`);
+export async function fetchIncidentByTrackingId(trackingId) {
+  const response = await fetch(`${API_BASE}/incidents/track/${encodeURIComponent(trackingId.trim())}`);
+  if (response.status === 404) {
+    return null;
+  }
   if (!response.ok) {
-    throw new Error('Failed to fetch incident details');
+    throw new Error('Failed to look up tracking ID');
   }
   return response.json();
 }

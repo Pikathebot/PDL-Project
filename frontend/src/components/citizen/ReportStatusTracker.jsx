@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { Search, Clock } from 'lucide-react';
-import { fetchIncidents } from '../../services/api';
+import { fetchIncidentByTrackingId } from '../../services/api';
 
+// Must cover every value of the backend IncidentStatus enum. `closed` was
+// missing, so a closed incident made findIndex return -1 and the tracker
+// rendered every step as incomplete - as though nothing had happened to a
+// report that was in fact finished.
 const STATUS_STEPS = [
   { id: 'reported', label: 'Reported' },
   { id: 'ai_processing', label: 'AI Processing' },
@@ -9,6 +13,7 @@ const STATUS_STEPS = [
   { id: 'dispatched', label: 'Dispatched' },
   { id: 'in_progress', label: 'In Progress' },
   { id: 'resolved', label: 'Resolved' },
+  { id: 'closed', label: 'Closed' },
 ];
 
 export default function ReportStatusTracker() {
@@ -17,14 +22,22 @@ export default function ReportStatusTracker() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // -1 means the backend reported a status this component does not know about.
+  // Say so, rather than drawing an all-incomplete track that reads as "nothing
+  // has happened yet".
+  const currentIdx = incident ? STATUS_STEPS.findIndex((s) => s.id === incident.status) : -1;
+  const attachments = incident?.media_attachments ?? [];
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!trackingId) return;
     setLoading(true);
     setError('');
     try {
-      const list = await fetchIncidents({});
-      const found = list.find((i) => i.tracking_id.toLowerCase() === trackingId.trim().toLowerCase());
+      // Looked up server-side by tracking ID. This used to download the
+      // incident list and scan it in the browser, which silently failed for
+      // any report outside the API's 50-row default page.
+      const found = await fetchIncidentByTrackingId(trackingId);
       if (found) {
         setIncident(found);
       } else {
@@ -33,6 +46,7 @@ export default function ReportStatusTracker() {
       }
     } catch (err) {
       setError('Error searching tracking system.');
+      setIncident(null);
     } finally {
       setLoading(false);
     }
@@ -78,9 +92,32 @@ export default function ReportStatusTracker() {
             </span>
           </div>
 
-          <div className="pt-4 border-t border-[var(--border-subtle)] grid grid-cols-3 sm:grid-cols-6 gap-2 text-center">
+          {attachments.length > 0 && (
+            <div className="pt-4 border-t border-[var(--border-subtle)]">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-muted)] mb-2">
+                Evidence you submitted ({attachments.length})
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                {attachments.map((att) => (
+                  <span
+                    key={att.id}
+                    className="px-2 py-1 rounded-lg bg-[var(--bg-panel)] border border-[var(--border-subtle)] text-[10px] font-mono text-[var(--text-secondary)]"
+                  >
+                    {att.media_type}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {currentIdx === -1 && (
+            <p className="text-xs text-amber-500 font-semibold pt-4 border-t border-[var(--border-subtle)]">
+              Status &ldquo;{incident.status}&rdquo; is not one this tracker recognises.
+            </p>
+          )}
+
+          <div className="pt-4 border-t border-[var(--border-subtle)] grid grid-cols-4 sm:grid-cols-7 gap-2 text-center">
             {STATUS_STEPS.map((step, idx) => {
-              const currentIdx = STATUS_STEPS.findIndex((s) => s.id === incident.status);
               const isDone = idx <= currentIdx;
               return (
                 <div key={step.id} className="space-y-1">

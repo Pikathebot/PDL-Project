@@ -1,6 +1,9 @@
 import React, { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
+// leaflet.heat has been a declared dependency all along but was never imported;
+// the "heatmap" was translucent Circles. It augments the L namespace in place.
+import 'leaflet.heat';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -8,6 +11,35 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
+
+// Same intensity curve the backend uses for GET /analytics/heatmap, so the map
+// and the API agree on what "hot" means.
+function heatIntensity(incident) {
+  return Math.min(1.0, Math.max(0.1, (incident.priority_score ?? 0) / 100.0));
+}
+
+function HeatmapLayer({ incidents }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const points = incidents
+      .filter((inc) => Number.isFinite(inc.latitude) && Number.isFinite(inc.longitude))
+      .map((inc) => [inc.latitude, inc.longitude, heatIntensity(inc)]);
+
+    const layer = L.heatLayer(points, {
+      radius: 35,
+      blur: 25,
+      maxZoom: 17,
+      gradient: { 0.2: '#00f0ff', 0.5: '#ff9100', 0.8: '#ff1744' },
+    }).addTo(map);
+
+    return () => {
+      map.removeLayer(layer);
+    };
+  }, [incidents, map]);
+
+  return null;
+}
 
 function MapRecenter({ center }) {
   const map = useMap();
@@ -23,7 +55,10 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
     ? [selectedIncident.latitude, selectedIncident.longitude]
     : defaultCenter;
 
-  const [activeLayers, setActiveLayers] = React.useState({ incidents: true, units: true, hazards: true, heatmap: false });
+  // `units` and `hazards` used to be here too. Nothing in the render ever read
+  // them, so those two checkboxes moved and lit up while changing nothing on
+  // the map. There is no unit or hazard layer to toggle, so the controls went.
+  const [activeLayers, setActiveLayers] = React.useState({ incidents: true, heatmap: false });
   const [activeFilter, setActiveFilter] = React.useState('all');
 
   const tileUrl = theme === 'light'
@@ -59,36 +94,20 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
             <span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]"></span>
             <span>Heatmap Overlay</span>
           </label>
-          <label className="flex items-center space-x-2 cursor-pointer hover:text-emerald-400 transition">
-            <input
-              type="checkbox"
-              checked={activeLayers.units}
-              onChange={(e) => setActiveLayers({ ...activeLayers, units: e.target.checked })}
-              className="rounded bg-slate-800 border-slate-600 text-emerald-500 focus:ring-0"
-            />
-            <span className="w-2 h-2 rounded-sm border border-emerald-400 bg-emerald-500/30"></span>
-            <span>Units</span>
-          </label>
-          <label className="flex items-center space-x-2 cursor-pointer hover:text-red-400 transition">
-            <input
-              type="checkbox"
-              checked={activeLayers.hazards}
-              onChange={(e) => setActiveLayers({ ...activeLayers, hazards: e.target.checked })}
-              className="rounded bg-slate-800 border-slate-600 text-red-500 focus:ring-0"
-            />
-            <span className="text-red-400 text-xs">⚠️</span>
-            <span>Hazards</span>
-          </label>
         </div>
       </div>
 
       {/* Map Floating Quick Category Filters (Bottom-Left) */}
       <div className="absolute bottom-4 left-4 z-[1000] flex flex-wrap gap-2">
         {[
+          // ids are exact IncidentCategory values. 'traffic' used to sit here and
+          // matched no category at all - the real value is 'road_accident' - so
+          // that button reliably emptied the map.
           { id: 'all', label: 'All Markers', icon: '📍', color: 'bg-slate-900/80 border-slate-700 text-slate-200' },
           { id: 'fire', label: 'Active Fires', icon: '🔥', color: 'bg-red-950/80 border-red-500/40 text-red-400' },
-          { id: 'medical', label: 'Medical', icon: '🚑', color: 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400' },
-          { id: 'traffic', label: 'Traffic', icon: '🚗', color: 'bg-amber-950/80 border-amber-500/40 text-amber-400' }
+          { id: 'medical_emergency', label: 'Medical', icon: '🚑', color: 'bg-emerald-950/80 border-emerald-500/40 text-emerald-400' },
+          { id: 'road_accident', label: 'Road Accidents', icon: '🚗', color: 'bg-amber-950/80 border-amber-500/40 text-amber-400' },
+          { id: 'flooding', label: 'Flooding', icon: '🌊', color: 'bg-sky-950/80 border-sky-500/40 text-sky-400' }
         ].map((item) => (
           <button
             key={item.id}
@@ -112,24 +131,13 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
         />
         <MapRecenter center={center} />
 
-        {/* Heatmap Spatial Density Layer */}
-        {activeLayers.heatmap && incidents.map((inc) => (
-          <Circle
-            key={`heat-${inc.id}`}
-            center={[inc.latitude, inc.longitude]}
-            radius={inc.severity >= 4 ? 400 : 250}
-            pathOptions={{
-              color: inc.severity >= 4 ? '#ff1744' : inc.severity === 3 ? '#ff9100' : '#00f0ff',
-              fillColor: inc.severity >= 4 ? '#ff1744' : inc.severity === 3 ? '#ff9100' : '#00f0ff',
-              fillOpacity: 0.45,
-              weight: 0
-            }}
-          />
-        ))}
+        {/* Heatmap Spatial Density Layer - a real leaflet.heat gradient, not
+            one translucent Circle per marker. */}
+        {activeLayers.heatmap && <HeatmapLayer incidents={incidents} />}
 
         {activeLayers.incidents && incidents.map((inc) => {
           const isEmergency = inc.severity >= 4;
-          if (activeFilter !== 'all' && !inc.category.toLowerCase().includes(activeFilter)) return null;
+          if (activeFilter !== 'all' && inc.category !== activeFilter) return null;
 
           return (
             <React.Fragment key={inc.id}>

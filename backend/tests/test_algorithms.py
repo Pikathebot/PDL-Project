@@ -1,7 +1,13 @@
 import random
 from datetime import datetime, timedelta
 import pytest
-from backend.app.algorithms.union_find import UnionFind, haversine_distance, cosine_similarity, evaluate_incident_duplication
+from backend.app.algorithms.union_find import (
+    UnionFind,
+    haversine_distance,
+    cosine_similarity,
+    evaluate_incident_duplication,
+    DUPLICATE_SIMILARITY_THRESHOLD,
+)
 from ai_pipeline.nlp.embeddings import embeddings_engine
 from backend.app.algorithms.priority_queue import calculate_priority_score, IncidentPriorityQueue
 from backend.app.algorithms.kd_tree import KDTree
@@ -28,7 +34,7 @@ def test_incident_duplication_check():
 def test_duplication_rejects_non_semantic_embeddings():
     """
     The offline hash fallback yields ~0.81 cosine similarity for unrelated text,
-    well above the 0.75 threshold. Same place, same time, near-identical vectors
+    above any workable threshold. Same place, same time, near-identical vectors
     must still refuse to merge when the embedding is not semantic.
     """
     now = datetime.utcnow()
@@ -67,6 +73,88 @@ def test_unrelated_incident_text_does_not_merge_end_to_end():
     fire = incident("Building fire with thick smoke pouring from the second floor")
     pothole = incident("Large pothole causing traffic delay on the highway")
     assert evaluate_incident_duplication(fire, pothole) is False
+
+
+def test_genuine_duplicate_reports_do_merge():
+    """
+    The other half of the regression lock. Refusing to merge everything is a
+    correct-but-useless deduplicator; this asserts the Union-Find clustering
+    still fires when two citizens really do report the same event.
+
+    Skipped when sentence-transformers is absent, because the hash fallback is
+    deliberately barred from clustering at all.
+    """
+    result = embeddings_engine.generate_embedding("probe")
+    if not result.is_semantic:
+        pytest.skip("sentence-transformers not installed - clustering is inert by design")
+
+    now = datetime.utcnow()
+
+    def incident(text, lon=72.8777):
+        e = embeddings_engine.generate_embedding(text)
+        return {"latitude": 19.0760, "longitude": lon, "created_at": now,
+                "vector": e.vector, "is_semantic": e.is_semantic}
+
+    a = incident("Building fire with thick smoke pouring from the second floor")
+    b = incident("Fire in a building, heavy smoke coming out of the upper floor")
+    assert evaluate_incident_duplication(a, b) is True
+
+    # Same text, but 6km away - the geo gate must still veto the merge.
+    assert evaluate_incident_duplication(a, incident(
+        "Fire in a building, heavy smoke coming out of the upper floor", lon=72.9500)) is False
+
+
+def test_similarity_threshold_separates_real_duplicate_populations():
+    """
+    Guards the calibration in union_find. DUPLICATE_SIMILARITY_THRESHOLD was
+    0.75, a value tuned against the hash fallback's inflated ~0.81 baseline.
+    Carried over to real embeddings it sat above most genuine duplicates, so
+    nothing would ever have clustered. This asserts the threshold still lands
+    between the two populations if the model or the constant is changed.
+    """
+    result = embeddings_engine.generate_embedding("probe")
+    if not result.is_semantic:
+        pytest.skip("sentence-transformers not installed")
+
+    def sim(a, b):
+        return cosine_similarity(
+            embeddings_engine.generate_embedding(a).vector,
+            embeddings_engine.generate_embedding(b).vector,
+        )
+
+    duplicates = [
+        ("Building fire with thick smoke", "Fire in a building, heavy smoke pouring out"),
+        ("Car crash at the flyover, two vehicles", "Accident on the flyover involving 2 cars"),
+        ("Water logging on the main road", "Road is flooded, water everywhere"),
+        ("Live electric wire hanging low", "Exposed power line dangling over the street"),
+    ]
+    non_duplicates = [
+        ("Building fire with thick smoke", "Pothole causing traffic delay"),
+        ("Car crash at the flyover", "Water logging on the main road"),
+        ("Live electric wire hanging low", "Man collapsed near the bus stop"),
+        ("Ambulance needed, chest pain", "Garbage not collected for days"),
+    ]
+
+    duplicate_scores = [sim(a, b) for a, b in duplicates]
+    non_duplicate_scores = [sim(a, b) for a, b in non_duplicates]
+    worst_non_duplicate = max(non_duplicate_scores)
+
+    # Hard requirement: never merge unrelated reports. A false merge hides a real
+    # emergency behind an unrelated one.
+    assert worst_non_duplicate < DUPLICATE_SIMILARITY_THRESHOLD, (
+        f"threshold {DUPLICATE_SIMILARITY_THRESHOLD} would merge an unrelated "
+        f"pair scoring {worst_non_duplicate:.3f}"
+    )
+
+    # Soft requirement: still actually cluster. Not all four are expected to
+    # clear it - the electric-wire pair is synonymous with no shared vocabulary
+    # and scores ~0.41, which no safe threshold reaches.
+    caught = sum(1 for score in duplicate_scores if score >= DUPLICATE_SIMILARITY_THRESHOLD)
+    assert caught >= 3, (
+        f"threshold {DUPLICATE_SIMILARITY_THRESHOLD} catches only {caught}/4 "
+        f"duplicate pairs {[round(s, 3) for s in duplicate_scores]} - clustering "
+        f"has become effectively inert"
+    )
 
 
 def test_fallback_embedding_is_flagged_non_semantic():

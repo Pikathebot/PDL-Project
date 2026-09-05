@@ -140,3 +140,82 @@ async def test_priority_score_is_computed_not_left_at_placeholder(db: AsyncSessi
     await _async_process(incident.id, session=db)
     await db.refresh(incident)
     assert incident.priority_score != 50.0
+
+
+@pytest.mark.asyncio
+async def test_duplicate_reports_are_clustered_end_to_end(db: AsyncSession):
+    """
+    The Union-Find showpiece, exercised through the real pipeline: two citizens
+    report the same fire from the same corner, minutes apart. They must end up
+    in one cluster with a merged report count.
+    """
+    from ai_pipeline.nlp.embeddings import embeddings_engine
+    from backend.app.models.incident import IncidentCluster
+    from sqlalchemy import select
+
+    if not embeddings_engine.generate_embedding("probe").is_semantic:
+        pytest.skip("sentence-transformers not installed - clustering is inert by design")
+
+    first = Incident(
+        tracking_id="INC-DUP-0001",
+        category=IncidentCategory.FIRE,
+        description="Building fire with thick smoke pouring from the second floor",
+        latitude=19.0760, longitude=72.8777, status=IncidentStatus.REPORTED, priority_score=50.0,
+    )
+    second = Incident(
+        tracking_id="INC-DUP-0002",
+        category=IncidentCategory.FIRE,
+        description="Fire in a building, heavy smoke coming out of the upper floor",
+        latitude=19.0761, longitude=72.8778, status=IncidentStatus.REPORTED, priority_score=50.0,
+    )
+    db.add_all([first, second])
+    await db.commit()
+    await db.refresh(first)
+    await db.refresh(second)
+
+    await _async_process(first.id, session=db)
+    await _async_process(second.id, session=db)
+
+    await db.refresh(first)
+    await db.refresh(second)
+
+    assert first.cluster_id is not None, "duplicate reports were not clustered"
+    assert first.cluster_id == second.cluster_id, "duplicates landed in different clusters"
+
+    cluster = (await db.execute(
+        select(IncidentCluster).where(IncidentCluster.id == first.cluster_id)
+    )).scalar_one()
+    assert cluster.corroboration_count >= 2
+
+
+@pytest.mark.asyncio
+async def test_unrelated_reports_are_not_clustered_end_to_end(db: AsyncSession):
+    """
+    The audit's headline bug: a fire and a pothole at the same corner scored
+    0.811 on the hash fallback against a 0.75 threshold and became one incident.
+    """
+    fire = Incident(
+        tracking_id="INC-SEP-0001",
+        category=IncidentCategory.FIRE,
+        description="Building fire with thick smoke pouring from the second floor",
+        latitude=19.0760, longitude=72.8777, status=IncidentStatus.REPORTED, priority_score=50.0,
+    )
+    pothole = Incident(
+        tracking_id="INC-SEP-0002",
+        category=IncidentCategory.INFRASTRUCTURE_DAMAGE,
+        description="Large pothole causing traffic delay on the highway",
+        latitude=19.0761, longitude=72.8778, status=IncidentStatus.REPORTED, priority_score=50.0,
+    )
+    db.add_all([fire, pothole])
+    await db.commit()
+    await db.refresh(fire)
+    await db.refresh(pothole)
+
+    await _async_process(fire.id, session=db)
+    await _async_process(pothole.id, session=db)
+
+    await db.refresh(fire)
+    await db.refresh(pothole)
+
+    assert not (fire.cluster_id is not None and fire.cluster_id == pothole.cluster_id), \
+        "a fire report and a pothole report were merged into one incident"
