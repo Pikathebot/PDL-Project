@@ -127,3 +127,7 @@ graphify-out/
 
 # Project archives - the repo should not contain a copy of itself
 *.rar
+
+# Playwright run artifacts
+frontend/test-results/
+frontend/playwright-report/
