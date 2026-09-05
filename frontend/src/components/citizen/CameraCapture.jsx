@@ -1,19 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera, X, Check } from 'lucide-react';
 
 export default function CameraCapture({ onFileSelected }) {
   const [preview, setPreview] = useState(null);
+  // Every URL.createObjectURL pins its Blob in memory until it is revoked.
+  // Nothing revoked them before, so each re-pick leaked the previous photo (and
+  // a video can be tens of megabytes) for the lifetime of the page.
+  const previewRef = useRef(null);
+
+  const setPreviewUrl = (url) => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    previewRef.current = url;
+    setPreview(url);
+  };
+
+  useEffect(() => () => {
+    if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+  }, []);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      setPreview(URL.createObjectURL(file));
+      setPreviewUrl(URL.createObjectURL(file));
       onFileSelected(file);
     }
   };
 
   const clearCapture = () => {
-    setPreview(null);
+    setPreviewUrl(null);
     onFileSelected(null);
   };
 
@@ -38,7 +52,7 @@ export default function CameraCapture({ onFileSelected }) {
         <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-[var(--border-subtle)] rounded-2xl bg-[var(--bg-input)] hover:border-sky-500/50 transition cursor-pointer">
           <Camera className="w-7 h-7 text-sky-500 mb-1.5" />
           <span className="text-xs text-[var(--text-primary)] font-bold">Attach Photo / Video</span>
-          <span className="text-[10px] text-[var(--text-muted)] mt-0.5">EXIF metadata verification enabled</span>
+          <span className="text-[10px] text-[var(--text-muted)] mt-0.5">Photos are checked for EXIF location data</span>
           <input type="file" accept="image/*,video/*" onChange={handleFileChange} className="hidden" />
         </label>
       )}

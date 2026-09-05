@@ -85,3 +85,33 @@ async def test_track_finds_incidents_outside_the_default_list_page(client: Async
         response = await client.get(f"/api/v1/incidents/track/{incident['tracking_id']}")
         assert response.status_code == 200
         assert response.json()["tracking_id"] == incident["tracking_id"]
+
+
+@pytest.mark.asyncio
+async def test_turnstile_disabled_by_default_lets_reports_through(client: AsyncClient):
+    """The demo runs with TURNSTILE_SECRET_KEY unset; reporting must still work."""
+    response = await client.post(
+        "/api/v1/incidents/",
+        data={"category": "fire", "description": "Smoke from a shop.",
+              "latitude": "19.0760", "longitude": "72.8777"},
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.asyncio
+async def test_turnstile_rejects_a_missing_token_once_configured(client: AsyncClient, monkeypatch):
+    """
+    The check used to bypass on `not token`, so a bot that simply omitted the
+    token was waved through even with the secret configured - the control could
+    never block anything.
+    """
+    from backend.app.core import security
+
+    monkeypatch.setattr(security, "TURNSTILE_SECRET_KEY", "a-configured-secret")
+
+    response = await client.post(
+        "/api/v1/incidents/",
+        data={"category": "fire", "description": "Smoke from a shop.",
+              "latitude": "19.0760", "longitude": "72.8777"},
+    )
+    assert response.status_code == 403
