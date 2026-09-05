@@ -25,6 +25,19 @@ TestingSessionLocal = async_sessionmaker(
 )
 
 @pytest.fixture(autouse=True)
+def _no_celery_broker(monkeypatch):
+    """
+    Stop Celery from trying to reach a real Redis broker during tests.
+
+    create_incident fires process_incident_ai.delay() and swallows the failure,
+    but Celery still spends its full connection-retry budget first - which is
+    where nearly all of the suite's wall-clock time was going.
+    """
+    from backend.app.tasks import ai_tasks
+    monkeypatch.setattr(ai_tasks.process_incident_ai, "delay", lambda *a, **kw: None)
+
+
+@pytest.fixture(autouse=True)
 async def _setup_db():
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)

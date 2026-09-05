@@ -2,15 +2,16 @@ import json
 import httpx
 from typing import Dict, Any, Optional, List
 from ai_pipeline.providers.base import AIProvider
-from ai_pipeline.nlp.embeddings import embeddings_engine
 
-class LMStudioProvider(AIProvider):
+
+class OpenAIProvider(AIProvider):
     """
-    LM Studio local REST server integration handler.
+    OpenAI-compatible API provider (OpenAI, Azure, or compatible endpoints).
     """
 
-    def __init__(self, api_url: str = "http://localhost:1234/v1", model_name: str = "gemma-4-e4b-qat", **kwargs):
+    def __init__(self, api_key: str, api_url: str = "https://api.openai.com/v1", model_name: str = "gpt-4o-mini", **kwargs):
         self.api_url = api_url.rstrip("/")
+        self.api_key = api_key
         self.model_name = model_name
 
     async def generate(self, prompt: str, system_prompt: Optional[str] = None, max_tokens: int = 512) -> str:
@@ -26,14 +27,16 @@ class LMStudioProvider(AIProvider):
             "temperature": 0.2
         }
 
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+
         try:
             async with httpx.AsyncClient(timeout=30.0) as client:
-                response = await client.post(f"{self.api_url}/chat/completions", json=payload)
+                response = await client.post(f"{self.api_url}/chat/completions", json=payload, headers=headers)
                 response.raise_for_status()
                 data = response.json()
                 return data["choices"][0]["message"]["content"].strip()
         except Exception as e:
-            return f"[LM Studio API Error / Mock Response: {str(e)}]"
+            return f"[OpenAI API Error: {str(e)}]"
 
     async def extract_structured_data(self, incident_text: str) -> Dict[str, Any]:
         system_prompt = (
@@ -47,6 +50,15 @@ class LMStudioProvider(AIProvider):
             return {"summary": res, "parsed": False}
 
     async def get_embedding(self, text: str) -> List[float]:
-        # The AIProvider contract is a bare vector; provenance is recorded by the
-        # caller that persists it (backend/app/tasks/ai_tasks.py).
-        return embeddings_engine.generate_embedding(text).vector
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.api_url}/embeddings",
+                    json={"model": "text-embedding-3-small", "input": text},
+                    headers={"Authorization": f"Bearer {self.api_key}"}
+                )
+                response.raise_for_status()
+                data = response.json()
+                return data["data"][0]["embedding"]
+        except Exception:
+            return [0.0] * 1536

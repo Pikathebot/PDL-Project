@@ -20,17 +20,24 @@ class WhisperTranscriber:
     def transcribe(self, audio_path: str) -> Dict[str, Any]:
         self._load_model()
         if self.model is None or not os.path.exists(audio_path):
+            # Previously this returned a fabricated sentence about a flyover
+            # collision. That text was indistinguishable from a real transcript
+            # and would have polluted the incident description, the LLM prompt
+            # and the embedding used for deduplication.
             return {
-                "text": "Emergency assistance needed. Vehicles collided on flyover, road is blocked.",
-                "language": "en",
-                "confidence": 0.95
+                "model_available": False,
+                "text": "",
+                "language": None,
+                "confidence": None,
+                "note": "Whisper not installed - audio was not transcribed",
             }
 
         result = self.model.transcribe(audio_path)
         return {
+            "model_available": True,
             "text": result.get("text", "").strip(),
             "language": result.get("language", "en"),
-            "confidence": 0.90
+            "confidence": 0.90,
         }
 
 whisper_transcriber = WhisperTranscriber()

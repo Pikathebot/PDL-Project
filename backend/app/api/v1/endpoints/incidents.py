@@ -3,17 +3,16 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.db import get_db
-from backend.app.models.incident import Incident, IncidentCategory, IncidentStatus
+from backend.app.models.incident import Incident, IncidentCategory, IncidentStatus, IncidentCluster
 from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
 from backend.app.schemas.incident import IncidentRead, IncidentUpdateStatus
 from backend.app.services.storage import storage_service
 from backend.app.tasks.ai_tasks import process_incident_ai
 
-import math
 from backend.app.core.websocket_manager import ws_manager
 from backend.app.models.user import Responder, ResponderStatus, User
 from backend.app.schemas.user import ResponderRead, DispatchRequest
@@ -46,34 +45,74 @@ async def get_heatmap_data(db: AsyncSession = Depends(get_db)):
         })
     return heatmap_points
 
+def _enum_key(value) -> str:
+    return value.value if hasattr(value, "value") else str(value)
+
+
 @router.get("/analytics/summary")
 async def get_analytics_summary(db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(Incident))
-    incidents = res.scalars().all()
+    """
+    Aggregate counts for the dispatcher dashboard.
 
-    cat_counts = {}
-    sev_counts = {"critical": 0, "major": 0, "minor": 0}
+    Every figure here is computed from the database. Fields that once reported
+    fixed numbers (active_units 45, deployed_units 32, avg_response_time_minutes
+    18.4) have been removed rather than faked. Response time in particular cannot
+    be derived from this schema: there is only created_at and updated_at, and
+    updated_at is bumped by any mutation, so their difference measures "time
+    since last edit", not time to respond. Computing it honestly needs
+    dispatched_at / resolved_at columns.
+    """
+    # GROUP BY in the database rather than loading every row to count it.
+    cat_rows = (await db.execute(
+        select(Incident.category, func.count(Incident.id)).group_by(Incident.category)
+    )).all()
+    sev_rows = (await db.execute(
+        select(Incident.severity, func.count(Incident.id)).group_by(Incident.severity)
+    )).all()
+    status_rows = (await db.execute(
+        select(Incident.status, func.count(Incident.id)).group_by(Incident.status)
+    )).all()
+    responder_rows = (await db.execute(
+        select(Responder.status, func.count(Responder.id)).group_by(Responder.status)
+    )).all()
+    cluster_count, merged_reports = (await db.execute(
+        select(
+            func.count(IncidentCluster.id),
+            func.coalesce(func.sum(IncidentCluster.corroboration_count), 0),
+        )
+    )).one()
 
-    for inc in incidents:
-        cat_key = inc.category.value if hasattr(inc.category, "value") else str(inc.category)
-        cat_counts[cat_key] = cat_counts.get(cat_key, 0) + 1
+    category_counts = {_enum_key(cat): count for cat, count in cat_rows}
+    status_counts = {_enum_key(st): count for st, count in status_rows}
 
-        if inc.severity >= 4:
-            sev_counts["critical"] += 1
-        elif inc.severity == 3:
-            sev_counts["major"] += 1
+    # Severity is 1-5; bucket it into the three bands the dashboard displays.
+    severity_counts = {"critical": 0, "major": 0, "minor": 0}
+    for severity, count in sev_rows:
+        if severity >= 4:
+            severity_counts["critical"] += count
+        elif severity == 3:
+            severity_counts["major"] += count
         else:
-            sev_counts["minor"] += 1
+            severity_counts["minor"] += count
+
+    responder_counts = {"available": 0, "busy": 0, "offline": 0}
+    for st, count in responder_rows:
+        responder_counts[_enum_key(st)] = count
+
+    closed_statuses = {IncidentStatus.RESOLVED.value, IncidentStatus.CLOSED.value}
 
     return {
-        "total_incidents": len(incidents),
-        "active_units": 45,
-        "deployed_units": 32,
-        "available_units": 9,
-        "out_of_service_units": 4,
-        "avg_response_time_minutes": 18.4,
-        "category_counts": cat_counts,
-        "severity_counts": sev_counts
+        "total_incidents": sum(category_counts.values()),
+        "open_incidents": sum(c for k, c in status_counts.items() if k not in closed_statuses),
+        "category_counts": category_counts,
+        "severity_counts": severity_counts,
+        "status_counts": status_counts,
+        "responder_counts": responder_counts,
+        "total_responders": sum(responder_counts.values()),
+        "clusters": {
+            "count": cluster_count or 0,
+            "merged_reports": int(merged_reports or 0),
+        },
     }
 
 @router.post("/", response_model=IncidentRead, status_code=status.HTTP_201_CREATED)
@@ -251,28 +290,18 @@ async def get_nearest_responders(incident_id: int, limit: int = 5, db: AsyncSess
                 "latitude": r.latitude,
                 "longitude": r.longitude,
                 "last_active": r.last_active,
-                "responder_obj": r
             })
 
     if not points:
         return []
 
-    # Query using KDTree nearest neighbor
+    # The k-d tree does the spatial query. Distances come back from the traversal
+    # itself, so there is no second pass over every responder.
     kd = KDTree(points)
-    nearest = kd.find_nearest(incident.latitude, incident.longitude)
+    nearest = kd.find_k_nearest(incident.latitude, incident.longitude, k=limit)
 
-    # Sort all points by approximate distance to target
-    result_list = []
-    for p in points:
-        # Haversine distance in km
-        lat1, lon1, lat2, lon2 = map(math.radians, [incident.latitude, incident.longitude, p["latitude"], p["longitude"]])
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = math.sin(dlat / 2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2)**2
-        c = 2 * math.asin(math.sqrt(a))
-        km = 6371 * c
-        
-        result_list.append(ResponderRead(
+    return [
+        ResponderRead(
             id=p["responder_id"],
             user_id=p["user_id"],
             name=p["name"],
@@ -280,12 +309,11 @@ async def get_nearest_responders(incident_id: int, limit: int = 5, db: AsyncSess
             status=p["status"],
             latitude=p["latitude"],
             longitude=p["longitude"],
-            distance_km=round(km, 2),
-            last_active=p["last_active"]
-        ))
-
-    result_list.sort(key=lambda x: x.distance_km if x.distance_km is not None else 999999)
-    return result_list[:limit]
+            distance_km=round(distance_meters / 1000.0, 2),
+            last_active=p["last_active"],
+        )
+        for distance_meters, p in nearest
+    ]
 
 @router.post("/{incident_id}/dispatch", response_model=IncidentRead)
 async def dispatch_responder_to_incident(

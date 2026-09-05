@@ -21,4 +21,17 @@ class StorageService:
 
         return f"/media_uploads/{unique_name}", len(content)
 
+    def resolve_path(self, file_url: str) -> str:
+        """
+        Map a stored URL path back to a filesystem path.
+
+        save_file returns a *URL* ("/media_uploads/<uuid>.jpg"), which is what
+        gets persisted on MediaAttachment.file_path. Handing that straight to
+        os.path.exists always returns False, so anything doing filesystem work on
+        an attachment (YOLO detection, EXIF verification) silently fell through to
+        its "file not found" branch no matter what was installed.
+        """
+        return os.path.join(UPLOAD_DIR, os.path.basename(file_url))
+
+
 storage_service = StorageService()

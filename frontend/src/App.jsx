@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import {
   Shield, MapPin, BarChart3, Sun, Moon, Maximize2,
-  Layout, Search, Bell, TrendingUp, ChevronRight
+  Layout, Bell
 } from 'lucide-react';
 
 import CitizenReportForm from './components/citizen/CitizenReportForm';
@@ -47,14 +47,22 @@ function DispatcherDashboardView({ theme }) {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [fullMapMode, setFullMapMode] = useState(false);
   const [showRadius, setShowRadius] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [analytics, setAnalytics] = useState(null);
+  const [feed, setFeed] = useState({ status: 'disconnected', detail: null });
 
   const loadData = useCallback(async () => {
     try {
-      const list = await fetchIncidents({});
+      const [list, summary] = await Promise.all([fetchIncidents({}), fetchAnalyticsSummary()]);
       setIncidents(list);
+      setAnalytics(summary);
       setSelectedIncident((prev) => prev ?? list[0] ?? null);
+      setLoadError(null);
     } catch (err) {
       console.error(err);
+      // Surface the failure instead of leaving the last-known (or empty) data
+      // on screen looking authoritative.
+      setLoadError(err.message || 'Could not reach the backend.');
     }
   }, []);
 
@@ -65,7 +73,11 @@ function DispatcherDashboardView({ theme }) {
         loadData();
       }
     });
-    return () => unsubscribe();
+    const unsubscribeStatus = wsService.subscribeStatus(setFeed);
+    return () => {
+      unsubscribe();
+      unsubscribeStatus();
+    };
   }, [loadData]);
 
   const handleUpdate = (updated) => {
@@ -76,9 +88,29 @@ function DispatcherDashboardView({ theme }) {
   const emergencyCount = incidents.filter((i) => i.severity >= 4).length;
   const majorCount = incidents.filter((i) => i.severity === 3).length;
   const minorCount = incidents.filter((i) => i.severity <= 2).length;
+  const pct = (n) => (incidents.length ? `${Math.round((n / incidents.length) * 100)}%` : '0%');
+  const responders = analytics?.responder_counts ?? null;
+  const clusters = analytics?.clusters ?? null;
 
   return (
     <div className="space-y-6">
+      {(loadError || feed.status === 'unauthorized' || feed.status === 'failed') && (
+        <div className="p-4 rounded-2xl border border-red-500/40 bg-red-500/10 text-red-300 text-xs space-y-1">
+          {loadError && (
+            <p>
+              <span className="font-extrabold uppercase tracking-wider">Backend unreachable — </span>
+              {loadError} Figures below may be stale.
+            </p>
+          )}
+          {(feed.status === 'unauthorized' || feed.status === 'failed') && (
+            <p>
+              <span className="font-extrabold uppercase tracking-wider">Live feed unavailable — </span>
+              {feed.detail} Incidents will not update until the page is reloaded.
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 4 KPI Telemetry Cards (Matching Mockup Header Grid) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Active Incidents */}
@@ -90,29 +122,29 @@ function DispatcherDashboardView({ theme }) {
             </span>
           </div>
           <div className="flex items-baseline space-x-3 mb-3">
-            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">{incidents.length || 21}</span>
-            <span className="text-xs text-emerald-400 font-bold font-mono flex items-center">
-              <TrendingUp className="w-3 h-3 mr-0.5 inline" /> +2 this hr
+            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">{incidents.length}</span>
+            <span className="text-xs text-[var(--text-muted)] font-bold font-mono">
+              {incidents.length === 1 ? 'report' : 'reports'}
             </span>
           </div>
           {/* Breakdown progress bars */}
           <div className="space-y-1.5 text-[10px] font-bold font-mono">
             <div className="flex justify-between text-red-400">
-              <span>{emergencyCount || 5} CRITICAL</span>
+              <span>{emergencyCount} CRITICAL</span>
               <div className="w-24 bg-slate-800 rounded-full h-1.5 my-auto overflow-hidden">
-                <div className="bg-red-500 h-full rounded-full" style={{ width: '45%' }}></div>
+                <div className="bg-red-500 h-full rounded-full" style={{ width: pct(emergencyCount) }}></div>
               </div>
             </div>
             <div className="flex justify-between text-amber-400">
-              <span>{majorCount || 8} MAJOR</span>
+              <span>{majorCount} MAJOR</span>
               <div className="w-24 bg-slate-800 rounded-full h-1.5 my-auto overflow-hidden">
-                <div className="bg-amber-400 h-full rounded-full" style={{ width: '60%' }}></div>
+                <div className="bg-amber-400 h-full rounded-full" style={{ width: pct(majorCount) }}></div>
               </div>
             </div>
             <div className="flex justify-between text-emerald-400">
-              <span>{minorCount || 8} MINOR</span>
+              <span>{minorCount} MINOR</span>
               <div className="w-24 bg-slate-800 rounded-full h-1.5 my-auto overflow-hidden">
-                <div className="bg-emerald-400 h-full rounded-full" style={{ width: '70%' }}></div>
+                <div className="bg-emerald-400 h-full rounded-full" style={{ width: pct(minorCount) }}></div>
               </div>
             </div>
           </div>
@@ -125,22 +157,23 @@ function DispatcherDashboardView({ theme }) {
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
           </div>
           <div className="flex items-baseline space-x-2 mb-3">
-            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">45</span>
+            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
+              {analytics ? analytics.total_responders : '—'}
+            </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">TOTAL UNITS</span>
           </div>
-          {/* 3 Status badges matching mockup */}
           <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
             <div className="p-2 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
-              <span className="text-base font-extrabold text-cyan-400 font-mono block">32</span>
+              <span className="text-base font-extrabold text-cyan-400 font-mono block">{responders ? responders.busy : '—'}</span>
               <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-tighter">DEPLOYED</span>
             </div>
             <div className="p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-              <span className="text-base font-extrabold text-emerald-400 font-mono block">9</span>
+              <span className="text-base font-extrabold text-emerald-400 font-mono block">{responders ? responders.available : '—'}</span>
               <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter">AVAILABLE</span>
             </div>
             <div className="p-2 rounded-2xl bg-red-500/10 border border-red-500/30">
-              <span className="text-base font-extrabold text-red-400 font-mono block">4</span>
-              <span className="text-[9px] font-bold text-red-400 uppercase tracking-tighter">OOS</span>
+              <span className="text-base font-extrabold text-red-400 font-mono block">{responders ? responders.offline : '—'}</span>
+              <span className="text-[9px] font-bold text-red-400 uppercase tracking-tighter">OFFLINE</span>
             </div>
           </div>
         </div>
@@ -148,44 +181,51 @@ function DispatcherDashboardView({ theme }) {
         {/* Card 3: Current Telemetry & Alerts */}
         <div className="theme-panel p-5 rounded-3xl relative overflow-hidden border border-amber-500/20 shadow-xl hover:border-amber-500/40 transition">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Current Alerts</span>
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Duplicate Clusters</span>
             <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
-              High Triage
+              Union-Find
             </span>
           </div>
           <div className="flex items-baseline space-x-2 mb-3">
-            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">21</span>
-            <span className="text-xs text-amber-400 font-bold font-mono">5 PRIORITY</span>
+            <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
+              {clusters ? clusters.count : '—'}
+            </span>
+            <span className="text-xs text-amber-400 font-bold font-mono">
+              {clusters ? `${clusters.merged_reports} REPORTS MERGED` : ''}
+            </span>
           </div>
-          <div className="space-y-2 pt-1">
-            <button className="w-full py-2 px-3 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-400 text-xs font-bold flex items-center justify-between transition">
-              <span>Active Feeds</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <button className="w-full py-2 px-3 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold flex items-center justify-between transition">
-              <span>Critical Incidents</span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <p className="text-[10px] text-[var(--text-muted)] leading-relaxed pt-1">
+            Reports within 200 m and 2 h whose descriptions are semantically similar are
+            merged into a single incident by the disjoint-set clustering pass.
+          </p>
         </div>
 
         {/* Card 4: System Operational Status */}
         <div className="theme-panel p-5 rounded-3xl relative overflow-hidden border border-indigo-500/20 shadow-xl hover:border-indigo-500/40 transition">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">System Status</span>
-            <span className="px-2 py-0.5 text-[9px] font-extrabold rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-              99.8% Uptime
+            <span className="text-[11px] font-bold text-[var(--text-muted)] uppercase tracking-wider">Connection Status</span>
+          </div>
+          <div className="mb-3">
+            <span className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight block">
+              {loadError ? 'Degraded' : 'Reachable'}
+            </span>
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {loadError ? 'Backend API is not responding' : 'Backend API responding'}
             </span>
           </div>
-          <div className="mb-2">
-            <span className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight block">Operational</span>
-            <span className="text-[11px] text-[var(--text-muted)]">AI Pipeline & Celery Workers Live</span>
-          </div>
-          {/* Waveform graphic */}
-          <div className="h-10 w-full pt-1">
-            <svg viewBox="0 0 100 25" className="w-full h-full text-indigo-400 stroke-current fill-none stroke-[2]">
-              <path d="M0 15 Q 15 5, 30 15 T 60 10 T 90 18 T 100 12" />
-            </svg>
+          <div className="space-y-1.5 text-[10px] font-mono font-bold">
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-muted)] uppercase">REST API</span>
+              <span className={loadError ? 'text-red-400' : 'text-emerald-400'}>
+                {loadError ? 'UNREACHABLE' : 'OK'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[var(--text-muted)] uppercase">Live feed</span>
+              <span className={feed.status === 'connected' ? 'text-emerald-400' : 'text-amber-400'}>
+                {feed.status.toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -235,44 +275,78 @@ function DispatcherDashboardView({ theme }) {
             />
           </div>
 
-          {/* Analytics & SLA Trends Row (Matching bottom of mockup) */}
+          {/* Distribution charts. Both are plotted from the analytics aggregates -
+              they replace a static SVG path badged "Interactive" and a bar chart
+              whose heights were the literal array [45,65,30,80,55,90,40,70,85]. */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="theme-panel p-5 rounded-3xl space-y-3">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Dispatch Trends</h3>
-                <span className="text-[10px] px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/30 font-mono font-bold">Interactive</span>
+                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Hazard Categories</h3>
+                <span className="text-[10px] px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/30 font-mono font-bold">
+                  {analytics ? `${analytics.total_incidents} TOTAL` : '—'}
+                </span>
               </div>
-              <div className="h-32 w-full pt-2">
-                <svg viewBox="0 0 200 80" className="w-full h-full">
-                  <defs>
-                    <linearGradient id="cyanGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#00f0ff" stopOpacity="0.4" />
-                      <stop offset="100%" stopColor="#00f0ff" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M0 60 Q 40 20, 80 45 T 140 25 T 200 50 L 200 80 L 0 80 Z" fill="url(#cyanGrad)" />
-                  <path d="M0 60 Q 40 20, 80 45 T 140 25 T 200 50" fill="none" stroke="#00f0ff" strokeWidth="3" />
-                  <circle cx="80" cy="45" r="4" fill="#00f0ff" className="animate-ping" />
-                  <circle cx="80" cy="45" r="4" fill="#00f0ff" />
-                </svg>
-              </div>
+              {!analytics || analytics.total_incidents === 0 ? (
+                <p className="h-32 flex items-center justify-center text-[11px] text-[var(--text-muted)] italic">
+                  No incidents recorded yet.
+                </p>
+              ) : (
+                <div className="space-y-1.5 pt-1">
+                  {Object.entries(analytics.category_counts)
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([category, count]) => (
+                      <div key={category} className="flex items-center space-x-2 text-[10px] font-mono font-bold">
+                        <span className="w-32 shrink-0 text-[var(--text-secondary)] capitalize truncate">
+                          {category.replace(/_/g, ' ')}
+                        </span>
+                        <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full"
+                            style={{ width: `${Math.round((count / analytics.total_incidents) * 100)}%` }}
+                          ></div>
+                        </div>
+                        <span className="w-6 text-right text-cyan-400">{count}</span>
+                      </div>
+                    ))}
+                </div>
+              )}
             </div>
 
             <div className="theme-panel p-5 rounded-3xl space-y-3">
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
-                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Response Times</h3>
-                <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/30 font-mono font-bold">AVG 18.4m</span>
+                <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Severity Mix</h3>
+                <span className="text-[10px] px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/30 font-mono font-bold">
+                  LIVE COUNTS
+                </span>
               </div>
-              <div className="h-32 w-full flex items-end justify-between space-x-2 pt-2 px-2">
-                {[45, 65, 30, 80, 55, 90, 40, 70, 85].map((h, i) => (
-                  <div key={i} className="flex-1 bg-slate-800 rounded-t-lg overflow-hidden h-full flex items-end">
-                    <div
-                      className="w-full bg-gradient-to-t from-cyan-500 to-emerald-400 rounded-t-lg transition-all duration-500 hover:brightness-125"
-                      style={{ height: `${h}%` }}
-                    ></div>
-                  </div>
-                ))}
-              </div>
+              {!analytics || analytics.total_incidents === 0 ? (
+                <p className="h-32 flex items-center justify-center text-[11px] text-[var(--text-muted)] italic">
+                  No incidents recorded yet.
+                </p>
+              ) : (
+                <div className="h-32 w-full flex items-end justify-around space-x-3 pt-2 px-2">
+                  {[
+                    ['critical', 'from-red-500 to-red-400', 'text-red-400'],
+                    ['major', 'from-amber-500 to-amber-400', 'text-amber-400'],
+                    ['minor', 'from-cyan-500 to-emerald-400', 'text-emerald-400'],
+                  ].map(([band, gradient, textColor]) => {
+                    const count = analytics.severity_counts[band] ?? 0;
+                    const height = Math.round((count / analytics.total_incidents) * 100);
+                    return (
+                      <div key={band} className="flex-1 flex flex-col items-center h-full">
+                        <div className="flex-1 w-full flex items-end">
+                          <div
+                            className={`w-full bg-gradient-to-t ${gradient} rounded-t-lg transition-all duration-500`}
+                            style={{ height: `${height}%` }}
+                          ></div>
+                        </div>
+                        <span className={`text-[10px] font-mono font-bold mt-1 ${textColor}`}>{count}</span>
+                        <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase">{band}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -285,8 +359,23 @@ function DispatcherDashboardView({ theme }) {
                 <h2 className="text-sm font-extrabold text-[var(--text-primary)] uppercase tracking-wider">Real-Time Activity Feed</h2>
                 <p className="text-[10px] text-[var(--text-muted)] font-mono">Heap priority queue sorted</p>
               </div>
-              <span className="px-2.5 py-1 bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[10px] font-mono font-bold rounded-full">
-                LIVE
+              <span
+                title={feed.detail || undefined}
+                className={`px-2.5 py-1 border text-[10px] font-mono font-bold rounded-full ${
+                  feed.status === 'connected'
+                    ? 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'
+                    : feed.status === 'connecting' || feed.status === 'reconnecting'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'
+                }`}
+              >
+                {feed.status === 'connected'
+                  ? 'LIVE'
+                  : feed.status === 'connecting'
+                    ? 'CONNECTING'
+                    : feed.status === 'reconnecting'
+                      ? 'RECONNECTING'
+                      : 'OFFLINE'}
               </span>
             </div>
 
@@ -320,7 +409,10 @@ function AnalyticsView() {
   useEffect(() => {
     fetchAnalyticsSummary()
       .then((res) => setData(res))
-      .catch((err) => console.error(err))
+      .catch((err) => {
+        console.error(err);
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -338,28 +430,87 @@ function AnalyticsView() {
         <BarChart3 className="w-12 h-12 text-cyan-400 mx-auto" />
         <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Analytics & SLA Telemetry Engine</h2>
         <p className="text-[var(--text-secondary)] text-sm leading-relaxed max-w-2xl mx-auto">
-          Geographic hotspot density analysis, average response SLA tracking, and category hazard distributions.
+          Category and severity distribution, responder availability, and duplicate-cluster
+          counts — all computed from the incident database.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="theme-panel p-5 rounded-2xl border border-cyan-500/20">
-          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Total Logged Reports</span>
-          <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono block mt-1">{data?.total_incidents || 0}</span>
+      {!data ? (
+        <div className="theme-panel p-8 rounded-3xl text-center text-xs text-red-400">
+          Analytics unavailable — the backend did not respond.
         </div>
-        <div className="theme-panel p-5 rounded-2xl border border-emerald-500/20">
-          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Active Units</span>
-          <span className="text-3xl font-extrabold text-emerald-400 font-mono block mt-1">{data?.active_units || 45}</span>
-        </div>
-        <div className="theme-panel p-5 rounded-2xl border border-amber-500/20">
-          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Deployed Units</span>
-          <span className="text-3xl font-extrabold text-amber-400 font-mono block mt-1">{data?.deployed_units || 32}</span>
-        </div>
-        <div className="theme-panel p-5 rounded-2xl border border-indigo-500/20">
-          <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Avg Response SLA</span>
-          <span className="text-3xl font-extrabold text-indigo-400 font-mono block mt-1">{data?.avg_response_time_minutes || 18.4}m</span>
-        </div>
-      </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="theme-panel p-5 rounded-2xl border border-cyan-500/20">
+              <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Total Logged Reports</span>
+              <span className="text-3xl font-extrabold text-[var(--text-primary)] font-mono block mt-1">{data.total_incidents}</span>
+            </div>
+            <div className="theme-panel p-5 rounded-2xl border border-amber-500/20">
+              <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Open Incidents</span>
+              <span className="text-3xl font-extrabold text-amber-400 font-mono block mt-1">{data.open_incidents}</span>
+            </div>
+            <div className="theme-panel p-5 rounded-2xl border border-emerald-500/20">
+              <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Available Units</span>
+              <span className="text-3xl font-extrabold text-emerald-400 font-mono block mt-1">
+                {data.responder_counts.available}
+                <span className="text-base text-[var(--text-muted)]"> / {data.total_responders}</span>
+              </span>
+            </div>
+            <div className="theme-panel p-5 rounded-2xl border border-indigo-500/20">
+              <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Duplicate Clusters</span>
+              <span className="text-3xl font-extrabold text-indigo-400 font-mono block mt-1">
+                {data.clusters.count}
+                <span className="text-base text-[var(--text-muted)]"> / {data.clusters.merged_reports} merged</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="theme-panel p-5 rounded-3xl space-y-2">
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2">
+                Category Distribution
+              </h3>
+              {Object.keys(data.category_counts).length === 0 ? (
+                <p className="text-[11px] text-[var(--text-muted)] italic py-4">No incidents recorded yet.</p>
+              ) : (
+                Object.entries(data.category_counts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([category, count]) => (
+                    <div key={category} className="flex items-center space-x-2 text-[10px] font-mono font-bold">
+                      <span className="w-36 shrink-0 text-[var(--text-secondary)] capitalize truncate">
+                        {category.replace(/_/g, ' ')}
+                      </span>
+                      <div className="flex-1 bg-slate-800 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full"
+                          style={{ width: `${Math.round((count / data.total_incidents) * 100)}%` }}
+                        ></div>
+                      </div>
+                      <span className="w-6 text-right text-cyan-400">{count}</span>
+                    </div>
+                  ))
+              )}
+            </div>
+
+            <div className="theme-panel p-5 rounded-3xl space-y-2">
+              <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2">
+                Incident Status
+              </h3>
+              {Object.keys(data.status_counts).length === 0 ? (
+                <p className="text-[11px] text-[var(--text-muted)] italic py-4">No incidents recorded yet.</p>
+              ) : (
+                Object.entries(data.status_counts).map(([status, count]) => (
+                  <div key={status} className="flex items-center justify-between text-[11px] font-mono font-bold py-0.5">
+                    <span className="text-[var(--text-secondary)] capitalize">{status.replace(/_/g, ' ')}</span>
+                    <span className="text-cyan-400">{count}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -389,16 +540,6 @@ export default function App() {
               <span className="text-[9px] block text-cyan-400 font-mono tracking-widest uppercase font-bold">OPS CENTER</span>
             </div>
           </Link>
-
-          {/* Global Search Bar (Matching Mockup) */}
-          <div className="hidden md:flex items-center relative max-w-sm w-full mx-4">
-            <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5" />
-            <input
-              type="text"
-              placeholder="Global Search..."
-              className="w-full pl-10 pr-4 py-2 rounded-2xl bg-[var(--bg-input)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:border-cyan-400 transition"
-            />
-          </div>
 
           {/* Navigation Links */}
           <nav className="flex items-center space-x-1 sm:space-x-2 bg-[var(--bg-input)] p-1.5 rounded-full border border-[var(--border-subtle)]">
@@ -432,9 +573,6 @@ export default function App() {
           <div className="flex items-center space-x-3">
             <button className="relative p-2.5 rounded-full bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-cyan-400 transition">
               <Bell className="w-4 h-4" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
-                5
-              </span>
             </button>
 
             <button
@@ -445,16 +583,12 @@ export default function App() {
               {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-cyan-600" />}
             </button>
 
-            <div className="hidden sm:flex items-center space-x-2.5 pl-2 border-l border-[var(--border-subtle)]">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-400 to-emerald-400 p-0.5 shadow-[0_0_10px_rgba(0,240,255,0.3)]">
-                <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center text-cyan-400 font-bold text-xs">
-                  AR
-                </div>
-              </div>
-              <div className="text-left leading-tight hidden lg:block">
-                <span className="text-xs font-extrabold text-[var(--text-primary)] block">Alex R.</span>
-                <span className="text-[10px] text-[var(--text-muted)] block">Dispatch Chief</span>
-              </div>
+            {/* No authentication exists in this application, so there is no signed-in
+                user to show. Saying so is more honest than inventing one. */}
+            <div className="hidden sm:flex items-center pl-2 border-l border-[var(--border-subtle)]">
+              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-extrabold uppercase tracking-wider">
+                Demo — unauthenticated
+              </span>
             </div>
           </div>
         </div>

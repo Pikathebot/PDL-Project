@@ -1,6 +1,8 @@
+import random
 from datetime import datetime, timedelta
 import pytest
 from backend.app.algorithms.union_find import UnionFind, haversine_distance, cosine_similarity, evaluate_incident_duplication
+from ai_pipeline.nlp.embeddings import embeddings_engine
 from backend.app.algorithms.priority_queue import calculate_priority_score, IncidentPriorityQueue
 from backend.app.algorithms.kd_tree import KDTree
 
@@ -18,9 +20,63 @@ def test_union_find_clustering():
 
 def test_incident_duplication_check():
     now = datetime.utcnow()
-    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3]}
-    inc2 = {"latitude": 19.0761, "longitude": 72.8778, "created_at": now + timedelta(minutes=5), "vector": [0.1, 0.2, 0.31]}
+    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": True}
+    inc2 = {"latitude": 19.0761, "longitude": 72.8778, "created_at": now + timedelta(minutes=5), "vector": [0.1, 0.2, 0.31], "is_semantic": True}
     assert evaluate_incident_duplication(inc1, inc2) is True
+
+
+def test_duplication_rejects_non_semantic_embeddings():
+    """
+    The offline hash fallback yields ~0.81 cosine similarity for unrelated text,
+    well above the 0.75 threshold. Same place, same time, near-identical vectors
+    must still refuse to merge when the embedding is not semantic.
+    """
+    now = datetime.utcnow()
+    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
+    inc2 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
+    assert evaluate_incident_duplication(inc1, inc2) is False
+
+
+def test_legacy_embedding_without_provenance_is_not_clustered():
+    """Rows persisted before provenance existed used the fallback - distrust them."""
+    now = datetime.utcnow()
+    legacy = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3]}
+    assert evaluate_incident_duplication(legacy, dict(legacy)) is False
+
+
+def test_duplication_rejects_dissimilar_semantic_vectors():
+    """Real embeddings that genuinely differ must not merge."""
+    now = datetime.utcnow()
+    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [1.0, 0.0, 0.0], "is_semantic": True}
+    inc2 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.0, 1.0, 0.0], "is_semantic": True}
+    assert evaluate_incident_duplication(inc1, inc2) is False
+
+
+def test_unrelated_incident_text_does_not_merge_end_to_end():
+    """
+    Regression lock for the audit finding: a fire report and a pothole report
+    filed at the same spot minutes apart must never become one incident.
+    """
+    now = datetime.utcnow()
+
+    def incident(text):
+        e = embeddings_engine.generate_embedding(text)
+        return {"latitude": 19.0760, "longitude": 72.8777, "created_at": now,
+                "vector": e.vector, "is_semantic": e.is_semantic}
+
+    fire = incident("Building fire with thick smoke pouring from the second floor")
+    pothole = incident("Large pothole causing traffic delay on the highway")
+    assert evaluate_incident_duplication(fire, pothole) is False
+
+
+def test_fallback_embedding_is_flagged_non_semantic():
+    """Without sentence-transformers the engine must admit the vector is not semantic."""
+    result = embeddings_engine.generate_embedding("any text at all")
+    if result.model == "sha256-fallback":
+        assert result.is_semantic is False
+    else:
+        assert result.is_semantic is True
+    assert len(result.vector) == 384
 
 def test_priority_score_formula():
     high_priority = calculate_priority_score(severity=5, corroboration_count=8, time_in_queue_hours=2.0, category="fire")
@@ -50,3 +106,57 @@ def test_kd_tree_responder_matching():
     tree = KDTree(responders)
     nearest = tree.find_nearest(19.0759, 72.8776)
     assert nearest["id"] == 2
+
+
+def _brute_force_sorted(points, lat, lon):
+    return sorted(points, key=lambda p: haversine_distance(p["latitude"], p["longitude"], lat, lon))
+
+
+def test_kd_tree_matches_brute_force_at_high_latitude():
+    """
+    A degree of longitude shrinks by cos(latitude), so a pruning test that treats
+    both axes as 111 km/degree over-prunes and can discard the true nearest
+    responder. Invisible near the equator, real further north - so the test has
+    to run somewhere the bug actually bites.
+    """
+    random.seed(1337)
+    for _ in range(200):
+        points = [
+            {"id": i, "latitude": 55.0 + random.uniform(-0.3, 0.3), "longitude": random.uniform(-0.5, 0.5)}
+            for i in range(40)
+        ]
+        lat = 55.0 + random.uniform(-0.3, 0.3)
+        lon = random.uniform(-0.5, 0.5)
+        expected = _brute_force_sorted(points, lat, lon)[0]["id"]
+        assert KDTree(points).find_nearest(lat, lon)["id"] == expected
+
+
+def test_kd_tree_find_k_nearest_matches_sorted_brute_force():
+    random.seed(7)
+    for _ in range(200):
+        points = [
+            {"id": i, "latitude": 19.0 + random.uniform(-0.3, 0.3), "longitude": 72.8 + random.uniform(-0.5, 0.5)}
+            for i in range(30)
+        ]
+        lat = 19.0 + random.uniform(-0.3, 0.3)
+        lon = 72.8 + random.uniform(-0.5, 0.5)
+        expected = [p["id"] for p in _brute_force_sorted(points, lat, lon)[:5]]
+        actual = [data["id"] for _, data in KDTree(points).find_k_nearest(lat, lon, 5)]
+        assert actual == expected
+
+
+def test_kd_tree_k_nearest_returns_ascending_distances():
+    points = [
+        {"id": 1, "latitude": 19.0100, "longitude": 72.8400},
+        {"id": 2, "latitude": 19.0760, "longitude": 72.8777},
+        {"id": 3, "latitude": 18.9400, "longitude": 72.8200},
+    ]
+    results = KDTree(points).find_k_nearest(19.0759, 72.8776, k=3)
+    distances = [d for d, _ in results]
+    assert distances == sorted(distances)
+    assert results[0][1]["id"] == 2
+
+
+def test_kd_tree_k_larger_than_population():
+    points = [{"id": 1, "latitude": 19.0, "longitude": 72.8}]
+    assert len(KDTree(points).find_k_nearest(19.0, 72.8, k=5)) == 1

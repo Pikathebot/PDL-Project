@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 import os
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -38,8 +38,10 @@ os.makedirs(media_dir, exist_ok=True)
 app.mount("/media_uploads", StaticFiles(directory=media_dir), name="media_uploads")
 
 @app.websocket("/ws/incidents")
-async def websocket_incidents_feed(websocket: WebSocket):
-    await ws_manager.connect(websocket)
+async def websocket_incidents_feed(websocket: WebSocket, token: str = Query(None)):
+    connected = await ws_manager.connect(websocket, token)
+    if not connected:
+        return
     try:
         # Keep the connection open; broadcast() pushes incident updates to clients.
         while True:

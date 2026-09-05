@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     SECRET_KEY: str = "SUPER_SECRET_KEY_CHANGE_THIS_IN_PRODUCTION"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days for simplicity in development
+
+    # Shared token the dispatcher dashboard presents when opening the incident
+    # WebSocket. This is a demo credential, not real authentication - swap in JWT
+    # signature and expiry checks (see core/websocket_manager.py) before any
+    # non-demo deployment.
+    WS_ACCESS_TOKEN: str = "sentinel-demo-ws-token"
     
     # Database
     POSTGRES_SERVER: str = "localhost"

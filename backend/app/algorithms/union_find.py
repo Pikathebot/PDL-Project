@@ -1,6 +1,12 @@
 import math
 from typing import Dict, List, Tuple, Any
 
+# Duplicate-detection thresholds. Two reports describe the same event only if
+# they are close in space, close in time, AND semantically similar.
+DUPLICATE_DISTANCE_METERS = 200.0
+DUPLICATE_TIME_WINDOW_SECONDS = 7200.0  # 2 hours
+DUPLICATE_SIMILARITY_THRESHOLD = 0.75
+
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Calculates distance between two lat/lon pairs in meters using Haversine formula."""
     R = 6371000  # Radius of Earth in meters
@@ -66,17 +72,31 @@ class UnionFind:
 def evaluate_incident_duplication(inc1: Dict[str, Any], inc2: Dict[str, Any]) -> bool:
     """
     Evaluates whether two reports refer to the same event:
+    0. Both sides carry a real semantic embedding
     1. Distance <= 200 meters
     2. Time difference <= 2 hours (7200 seconds)
     3. Embedding Cosine Similarity >= 0.75
+
+    Rule 0 exists because the offline hash fallback in
+    ai_pipeline.nlp.embeddings produces all-positive vectors whose pairwise
+    cosine similarity averages ~0.81 for completely unrelated text - above the
+    0.75 threshold. Clustering on those merges a fire report into a pothole
+    report. Refusing to cluster is the correct degradation; guessing is not.
+
+    Incidents persisted before provenance was recorded have no `is_semantic`
+    key, so the default of False correctly distrusts exactly the rows that were
+    written using the fallback.
     """
+    if not (inc1.get("is_semantic", False) and inc2.get("is_semantic", False)):
+        return False
+
     dist = haversine_distance(inc1["latitude"], inc1["longitude"], inc2["latitude"], inc2["longitude"])
-    if dist > 200.0:
+    if dist > DUPLICATE_DISTANCE_METERS:
         return False
 
     time_diff_sec = abs((inc1["created_at"] - inc2["created_at"]).total_seconds())
-    if time_diff_sec > 7200.0:
+    if time_diff_sec > DUPLICATE_TIME_WINDOW_SECONDS:
         return False
 
     sim = cosine_similarity(inc1.get("vector", []), inc2.get("vector", []))
-    return sim >= 0.75
+    return sim >= DUPLICATE_SIMILARITY_THRESHOLD

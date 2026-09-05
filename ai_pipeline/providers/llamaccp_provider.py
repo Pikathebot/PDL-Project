@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any, Optional, List
 from ai_pipeline.providers.base import AIProvider
+from ai_pipeline.nlp.embeddings import embeddings_engine
 
 class LlamaCppProvider(AIProvider):
     """
@@ -52,5 +53,6 @@ class LlamaCppProvider(AIProvider):
             }
 
     async def get_embedding(self, text: str) -> List[float]:
-        # Handled via sentence-transformers engine
-        return [0.0] * 384
+        # The AIProvider contract is a bare vector; provenance is recorded by the
+        # caller that persists it (backend/app/tasks/ai_tasks.py).
+        return embeddings_engine.generate_embedding(text).vector

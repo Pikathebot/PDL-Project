@@ -1,6 +1,9 @@
 import io
+import os
 import pytest
 from httpx import AsyncClient
+
+from backend.app.services.storage import UPLOAD_DIR
 
 @pytest.mark.asyncio
 async def test_incident_media_upload_and_static_serving(client: AsyncClient):
@@ -36,3 +39,9 @@ async def test_incident_media_upload_and_static_serving(client: AsyncClient):
     static_resp = await client.get(media["file_path"])
     assert static_resp.status_code == 200
     assert static_resp.content == fake_image_bytes
+
+    # Every run used to leave a permanent 22-byte stub in the repo's own
+    # media_uploads/ directory - that is how 11 of them ended up committed.
+    written = os.path.join(UPLOAD_DIR, os.path.basename(media["file_path"]))
+    if os.path.exists(written):
+        os.remove(written)

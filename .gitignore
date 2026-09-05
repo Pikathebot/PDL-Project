@@ -121,3 +121,9 @@ miniodata/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# graphify knowledge-graph output (regenerable: `graphify build`)
+graphify-out/
+
+# Project archives - the repo should not contain a copy of itself
+*.rar

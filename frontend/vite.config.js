@@ -49,6 +49,12 @@ export default defineConfig({
       '/ws': {
         target: 'ws://localhost:8000',
         ws: true,
+      },
+      // Uploaded evidence is served by the backend, not by Vite. Without this the
+      // dispatcher's <img> tags 404 in development.
+      '/media_uploads': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
       }
     }
   }

@@ -20,7 +20,9 @@ export default function CitizenReportForm() {
   const [category, setCategory] = useState('road_accident');
   const [description, setDescription] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [location, setLocation] = useState({ lat: 19.0760, lng: 72.8777, location_name: '' });
+  // No default coordinates: a report must carry a location the reporter actually
+  // supplied, not a plausible-looking one the form invented for them.
+  const [location, setLocation] = useState({ lat: null, lng: null, location_name: '' });
   const [mediaFile, setMediaFile] = useState(null);
   const [audioFile, setAudioFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -30,6 +32,10 @@ export default function CitizenReportForm() {
     e.preventDefault();
     if (!description) {
       alert('Please describe the hazard.');
+      return;
+    }
+    if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
+      alert('Please set the incident location — use "Use my location" or enter coordinates.');
       return;
     }
     setSubmitting(true);
@@ -59,7 +65,7 @@ export default function CitizenReportForm() {
       <div className="max-w-xl mx-auto theme-panel p-8 rounded-3xl text-center space-y-4 border border-emerald-500/30 shadow-2xl">
         <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto animate-bounce" />
         <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Report Transmitted</h2>
-        <p className="text-[var(--text-secondary)] text-xs">Our AI pipeline is extracting fields, verifying EXIF, and ranking priority.</p>
+        <p className="text-[var(--text-secondary)] text-xs">Your report has been logged and queued for review.</p>
         <div className="p-4 bg-[var(--bg-input)] rounded-2xl border border-[var(--border-subtle)] font-mono text-sky-500 font-bold text-xl tracking-wider">
           Tracking ID: {result.tracking_id}
         </div>

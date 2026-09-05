@@ -30,6 +30,10 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
 
   if (!incident) return null;
 
+  // `?? []` because IncidentRead omits the key for incidents created before
+  // media support, and test fixtures do not always supply it.
+  const attachments = incident.media_attachments ?? [];
+
   const handleStatusChange = async (newStatus) => {
     setUpdating(true);
     try {
@@ -81,6 +85,43 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
           </p>
         </div>
 
+        {/* Attached evidence. The backend has always stored and served these files
+            and returned their paths on every read - nothing in the UI displayed
+            them, while a hardcoded green "EXIF VERIFIED" badge stood in for real
+            verification. Both the media and its actual validation state now show. */}
+        <div className="space-y-1.5">
+          <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] block">
+            Attached Evidence
+          </span>
+          {attachments.length === 0 ? (
+            <p className="p-3 bg-[var(--bg-input)] rounded-xl text-[11px] text-[var(--text-muted)] italic border border-[var(--border-subtle)]">
+              No media attached to this report.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {attachments.map((att) => (
+                <div key={att.id} className="rounded-xl border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-input)]">
+                  {att.media_type === 'image' && (
+                    <img src={att.file_path} alt="Incident evidence" className="w-full max-h-56 object-cover" />
+                  )}
+                  {att.media_type === 'audio' && (
+                    <audio controls src={att.file_path} className="w-full p-2" />
+                  )}
+                  {att.media_type === 'video' && (
+                    <video controls src={att.file_path} className="w-full max-h-56" />
+                  )}
+                  <div className="flex items-center justify-between px-3 py-2">
+                    <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">{att.media_type}</span>
+                    <span className={`text-[9px] font-mono font-extrabold px-2 py-0.5 rounded-full border ${validationStyle(att)}`}>
+                      {validationLabel(att)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-3 gap-2">
           <div className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)]">
             <span className="text-[var(--text-muted)] block text-[10px] uppercase">Severity</span>
@@ -91,8 +132,12 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
             <span className="font-extrabold text-sm text-sky-500 font-mono">{incident.priority_score}</span>
           </div>
           <div className="p-2.5 bg-[var(--bg-input)] rounded-xl border border-[var(--border-subtle)]">
-            <span className="text-[var(--text-muted)] block text-[10px] uppercase">EXIF Status</span>
-            <span className="font-extrabold text-xs text-emerald-500 font-mono">VERIFIED</span>
+            <span className="text-[var(--text-muted)] block text-[10px] uppercase">Evidence</span>
+            <span className="font-extrabold text-xs text-[var(--text-primary)] font-mono">
+              {attachments.length === 0
+                ? 'NONE'
+                : `${attachments.length} FILE${attachments.length === 1 ? '' : 'S'}`}
+            </span>
           </div>
         </div>
 
@@ -176,3 +221,35 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   );
 }
 
+/**
+ * Evidence badges are derived from the real MediaAttachment.validation_status
+ * and exif_data written by the AI pipeline - never asserted.
+ */
+function validationLabel(att) {
+  const drift = att.exif_data?.drift_meters;
+  switch (att.validation_status) {
+    case 'valid':
+      return att.exif_data?.has_exif ? `GPS MATCH${drift != null ? ` (${Math.round(drift)} m)` : ''}` : 'NO EXIF DATA';
+    case 'suspicious':
+      return `LOCATION MISMATCH${drift != null ? ` (${Math.round(drift)} m)` : ''}`;
+    case 'rejected':
+      return 'REJECTED';
+    default:
+      return 'PENDING';
+  }
+}
+
+function validationStyle(att) {
+  switch (att.validation_status) {
+    case 'valid':
+      return att.exif_data?.has_exif
+        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+        : 'bg-slate-500/10 border-slate-500/30 text-[var(--text-muted)]';
+    case 'suspicious':
+      return 'bg-amber-500/10 border-amber-500/30 text-amber-500';
+    case 'rejected':
+      return 'bg-red-500/10 border-red-500/30 text-red-500';
+    default:
+      return 'bg-slate-500/10 border-slate-500/30 text-[var(--text-muted)]';
+  }
+}

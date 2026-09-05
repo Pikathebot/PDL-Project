@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Search, Clock } from 'lucide-react';
+import { formatTime } from '../../utils/datetime';
 
 export default function IncidentQueue({ incidents = [], selectedIncident, onSelectIncident }) {
   const [filterCategory, setFilterCategory] = useState('all');
@@ -30,7 +31,8 @@ export default function IncidentQueue({ incidents = [], selectedIncident, onSele
         </div>
 
         <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {['all', 'road_accident', 'fire', 'flooding', 'electrical_hazard', 'medical_emergency'].map((cat) => (
+          {['all', 'road_accident', 'fire', 'flooding', 'electrical_hazard', 'medical_emergency',
+            'infrastructure_damage', 'environmental_hazard', 'criminal_activity'].map((cat) => (
             <button
               key={cat}
               onClick={() => setFilterCategory(cat)}
@@ -53,12 +55,11 @@ export default function IncidentQueue({ incidents = [], selectedIncident, onSele
             No incidents matching queue filters.
           </div>
         ) : (
-          filteredIncidents.map((inc, index) => {
+          filteredIncidents.map((inc) => {
             const isSelected = selectedIncident?.id === inc.id;
             const isEmergency = inc.severity >= 4;
 
-            // Generate mock timestamp like in mockup (e.g., 13:33, 13:36)
-            const mockTime = `13:${38 - (index * 2)}`;
+            const reportedAt = formatTime(inc.created_at);
 
             return (
               <div
@@ -73,7 +74,7 @@ export default function IncidentQueue({ incidents = [], selectedIncident, onSele
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center space-x-2">
                     <span className="text-[10px] font-mono text-[var(--text-muted)] flex items-center">
-                      <Clock className="w-3 h-3 mr-1 text-cyan-400" /> {mockTime}
+                      <Clock className="w-3 h-3 mr-1 text-cyan-400" /> {reportedAt ?? '--:--'}
                     </span>
                     <span className="text-[10px] font-mono text-cyan-400 font-bold">{inc.tracking_id}</span>
                   </div>
