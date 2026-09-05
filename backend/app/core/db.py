@@ -3,7 +3,9 @@ from backend.app.core.config import settings
 
 engine = create_async_engine(
     settings.SQLALCHEMY_DATABASE_URI,
-    echo=True,  # Set to False in production
+    # Every statement was logged, incident descriptions and reporter phone
+    # numbers included. Off by default now; set SQL_ECHO=true to debug.
+    echo=settings.SQL_ECHO,
     future=True
 )
 

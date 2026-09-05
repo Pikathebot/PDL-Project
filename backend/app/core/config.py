@@ -60,6 +60,10 @@ class Settings(BaseSettings):
 
     # AI Config
     AI_PROVIDER: str = "llamacpp"  # llamacpp, lmstudio, openai
+
+    # Echo every SQL statement to stdout. Off by default: the log includes
+    # incident descriptions and reporter phone numbers.
+    SQL_ECHO: bool = False
     LLAMA_MODEL_PATH: str = "models/gemma-4-e4b-qat.gguf"
     LMSTUDIO_API_URL: str = "http://localhost:1234/v1"
     OPENAI_API_KEY: str = ""
