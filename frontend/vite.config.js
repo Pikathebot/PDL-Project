@@ -10,13 +10,19 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      // The service worker (and so the install prompt) is normally build-only.
+      // run.bat sets VITE_PWA_DEV=true so a `npm run dev` demo is installable
+      // on a phone; leave it unset for day-to-day work to avoid stale caches.
+      devOptions: { enabled: process.env.VITE_PWA_DEV === 'true' },
+      includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'mask-icon.svg', 'sentinel.svg'],
       manifest: {
         name: 'Sentinel Public Safety Platform',
         short_name: 'Sentinel',
         description: 'AI-Powered Citizen Incident Reporting & Dispatcher Dashboard',
         theme_color: '#0f172a',
         background_color: '#0f172a',
+        start_url: '/',
+        scope: '/',
         display: 'standalone',
         icons: [
           {
@@ -28,6 +34,12 @@ export default defineConfig({
             src: 'pwa-512x512.png',
             sizes: '512x512',
             type: 'image/png'
+          },
+          {
+            src: 'pwa-maskable-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
           }
         ]
       }

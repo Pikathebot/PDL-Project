@@ -219,3 +219,66 @@ async def test_unrelated_reports_are_not_clustered_end_to_end(db: AsyncSession):
 
     assert not (fire.cluster_id is not None and fire.cluster_id == pothole.cluster_id), \
         "a fire report and a pothole report were merged into one incident"
+
+
+@pytest.mark.asyncio
+async def test_video_attachment_is_analysed_via_keyframes(db: AsyncSession, monkeypatch):
+    """
+    Video used to be stored with {"reason": "video analysis not implemented"}.
+    Now keyframes are sampled and run through the detector; the best frame is
+    written beside the video and exposed as keyframe_url for the dashboard.
+    """
+    import cv2
+    import numpy as np
+    from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
+    from backend.app.services.storage import UPLOAD_DIR
+
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    video = os.path.join(UPLOAD_DIR, "pytest_probe_clip.mp4")
+    writer = cv2.VideoWriter(video, cv2.VideoWriter_fourcc(*"mp4v"), 10, (64, 48))
+    for i in range(20):
+        frame = np.zeros((48, 64, 3), dtype=np.uint8)
+        frame[:, : i * 3] = (0, 0, 255)
+        writer.write(frame)
+    writer.release()
+
+    # Detector stubbed: the test is about the routing, not YOLO's opinion of a
+    # red rectangle.
+    class FakeDetector:
+        def detect(self, path):
+            return {"model_available": True, "detected_objects": ["fire"], "highest_confidence": 0.77,
+                    "estimated_severity": 4, "hazard_label": "fire"}
+    from backend.app.tasks import ai_tasks
+    monkeypatch.setattr(ai_tasks, "yolo_detector", FakeDetector())
+
+    try:
+        incident = Incident(
+            tracking_id="INC-VID-001", category=IncidentCategory.FIRE,
+            description="Flames from a shop shutter.", latitude=19.0, longitude=72.8,
+            phone_number="+910000000000", status=IncidentStatus.REPORTED, severity=1, priority_score=50,
+        )
+        incident.media_attachments.append(MediaAttachment(
+            file_path="/media_uploads/pytest_probe_clip.mp4", media_type=MediaType.VIDEO, file_size_bytes=1,
+        ))
+        db.add(incident)
+        await db.commit()
+        await db.refresh(incident)
+
+        await _async_process(incident.id, session=db)
+        await db.refresh(incident)
+
+        from sqlalchemy import select
+        att = (await db.execute(
+            select(MediaAttachment).where(MediaAttachment.incident_id == incident.id)
+        )).scalar_one()
+        assert att.validation_details["frames_sampled"] == 3
+        assert att.validation_details["detected_objects"] == ["fire"]
+        assert att.validation_details["keyframe_url"].startswith("/media_uploads/pytest_probe_clip_kf")
+        assert att.validation_status == ValidationStatus.VALID
+        assert incident.ai_classification == "fire"
+        assert incident.severity == 4
+        assert incident.structured_details["ai_provenance"]["vision"] == "yolov8-keyframes"
+    finally:
+        for name in os.listdir(UPLOAD_DIR):
+            if name.startswith("pytest_probe_clip"):
+                os.remove(os.path.join(UPLOAD_DIR, name))

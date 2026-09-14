@@ -18,6 +18,9 @@ class MediaAttachmentRead(MediaAttachmentBase):
     file_size_bytes: int
     validation_status: ValidationStatus
     exif_data: Optional[Dict[str, Any]] = None
+    # Whisper transcript for audio; keyframe detection summary (+ keyframe_url)
+    # for video.
+    validation_details: Optional[Dict[str, Any]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

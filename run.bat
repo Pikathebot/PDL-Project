@@ -91,6 +91,7 @@ if "%AI_PROCESSING_MODE%"=="celery" (
     start "Sentinel Celery Worker" cmd /k "%PY% -m celery -A backend.app.tasks.celery_app.celery_app worker --loglevel=info --pool=solo"
 )
 start "Sentinel FastAPI Backend" cmd /k "%PY% -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000"
+set "VITE_PWA_DEV=true"
 start "Sentinel React Frontend" cmd /k "cd frontend && npm run dev"
 
 echo All services launched. Open http://localhost:5173/dashboard

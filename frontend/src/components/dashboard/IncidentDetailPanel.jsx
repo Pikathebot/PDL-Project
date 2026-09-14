@@ -108,7 +108,25 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
                     <audio controls src={att.file_path} className="w-full p-2" />
                   )}
                   {att.media_type === 'video' && (
-                    <video controls src={att.file_path} className="w-full max-h-56" />
+                    <video
+                      controls
+                      src={att.file_path}
+                      poster={att.validation_details?.keyframe_url}
+                      className="w-full max-h-56"
+                    />
+                  )}
+                  {att.media_type === 'video' && att.validation_details?.frames_sampled > 0 && (
+                    <div className="px-3 pt-2 text-[10px] font-mono text-sky-500">
+                      YOLO on {att.validation_details.frames_sampled} keyframes
+                      {att.validation_details.detected_objects?.length
+                        ? `: ${att.validation_details.detected_objects.join(', ')}`
+                        : ': nothing detected'}
+                    </div>
+                  )}
+                  {att.media_type === 'audio' && att.validation_details?.text && (
+                    <div className="px-3 pt-2 text-[10px] font-mono text-sky-500">
+                      Transcript: {att.validation_details.text}
+                    </div>
                   )}
                   <div className="flex items-center justify-between px-3 py-2">
                     <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">{att.media_type}</span>

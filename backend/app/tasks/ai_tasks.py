@@ -12,6 +12,7 @@ from backend.app.models.media import MediaType, ValidationStatus
 from backend.app.services.storage import storage_service
 from backend.app.algorithms.union_find import UnionFind, evaluate_incident_duplication
 from ai_pipeline.vision.detector import yolo_detector
+from ai_pipeline.vision.keyframes import analyse_video
 from ai_pipeline.nlp.extractor import llm_extractor
 from ai_pipeline.nlp.embeddings import embeddings_engine
 from ai_pipeline.nlp.transcriber import whisper_transcriber
@@ -69,22 +70,10 @@ async def _process_incident(incident_id: int, session: AsyncSession):
             )
             provenance["exif"] = "pillow"
 
-            # Only the first image drives classification and severity.
+            # Only the first visual attachment drives classification and severity.
             if not vision_done:
                 vision_done = True
-                detector_res = yolo_detector.detect(media_path)
-                if detector_res.get("model_available"):
-                    incident.ai_classification = detector_res.get("hazard_label")
-                    incident.ai_confidence = detector_res.get("highest_confidence")
-                    if detector_res.get("estimated_severity") is not None:
-                        incident.severity = detector_res["estimated_severity"]
-                    provenance["vision"] = "yolov8"
-                else:
-                    # Leave severity as reported. The mock has no opinion, and
-                    # overwriting a real value with a placeholder is worse than
-                    # leaving it alone.
-                    incident.ai_classification = None
-                    incident.ai_confidence = None
+                _apply_vision(incident, yolo_detector.detect(media_path), provenance, "yolov8")
 
         elif attachment.media_type == MediaType.AUDIO:
             transcription = whisper_transcriber.transcribe(media_path)
@@ -96,7 +85,19 @@ async def _process_incident(incident_id: int, session: AsyncSession):
                 provenance["transcription"] = "unavailable"
 
         elif attachment.media_type == MediaType.VIDEO:
-            attachment.validation_details = {"reason": "video analysis not implemented"}
+            # Sample keyframes and run the same detector over them. The best
+            # frame is written beside the video so the dashboard can show it.
+            video_res = analyse_video(media_path, yolo_detector)
+            details = {k: v for k, v in video_res.items() if k != "best_frame"}
+            if video_res.get("best_frame"):
+                details["keyframe_url"] = storage_service.url_for(video_res["best_frame"])
+            attachment.validation_details = details
+            attachment.validation_status = (
+                ValidationStatus.VALID if video_res.get("model_available") else ValidationStatus.PENDING
+            )
+            if not vision_done:
+                vision_done = True
+                _apply_vision(incident, video_res, provenance, "yolov8-keyframes")
 
     # A real transcript is genuine reported content, so it joins the text used
     # for extraction and embedding. An absent one contributes nothing.
@@ -111,7 +112,7 @@ async def _process_incident(incident_id: int, session: AsyncSession):
     extracted_details = await llm_extractor.extract_details(analysis_text)
     incident.structured_details = extracted_details
     llm_ran = bool(extracted_details.get("model_available"))
-    if llm_ran and extracted_details.get("parsed") and provenance["vision"] != "yolov8":
+    if llm_ran and extracted_details.get("parsed") and not provenance["vision"].startswith("yolov8"):
         rating = extracted_details.get("severity_rating")
         if isinstance(rating, int) and 1 <= rating <= 5:
             incident.severity = rating
@@ -162,6 +163,20 @@ async def _process_incident(incident_id: int, session: AsyncSession):
         "cluster_id": incident.cluster_id,
         "ai_provenance": provenance,
     })
+
+
+def _apply_vision(incident: Incident, result: dict, provenance: dict, source: str) -> None:
+    if result.get("model_available"):
+        incident.ai_classification = result.get("hazard_label")
+        incident.ai_confidence = result.get("highest_confidence")
+        if result.get("estimated_severity") is not None:
+            incident.severity = result["estimated_severity"]
+        provenance["vision"] = source
+    else:
+        # Leave severity as reported. The mock has no opinion, and overwriting
+        # a real value with a placeholder is worse than leaving it alone.
+        incident.ai_classification = None
+        incident.ai_confidence = None
 
 
 async def _run_deduplication(incident: Incident, session: AsyncSession):

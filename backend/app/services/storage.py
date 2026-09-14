@@ -32,5 +32,9 @@ class StorageService:
         """
         return os.path.join(UPLOAD_DIR, os.path.basename(file_url))
 
+    def url_for(self, fs_path: str) -> str:
+        """Inverse of resolve_path: filesystem path under UPLOAD_DIR -> served URL."""
+        return "/media_uploads/" + os.path.basename(fs_path)
+
 
 storage_service = StorageService()

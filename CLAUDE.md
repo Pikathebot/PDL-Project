@@ -49,7 +49,7 @@ Vitest and Playwright coexist in `frontend/`; `vite.config.js` `test.include` mu
 ### Request → AI pipeline flow
 
 1. `POST /api/v1/incidents/` (`backend/app/api/v1/endpoints/incidents.py`) saves uploads via `services/storage.py` (local `media_uploads/`, served statically by FastAPI; `file_path` on `MediaAttachment` is a **URL** `/media_uploads/<uuid>.ext`, use `storage_service.resolve_path()` for filesystem access), creates the `Incident` in status `REPORTED`, broadcasts over WebSocket, then fires `process_incident_ai.delay()` (failure is swallowed so reports succeed without Redis).
-2. `backend/app/tasks/ai_tasks.py::_process_incident` is the whole async pipeline (reached via Celery `process_incident_ai` or, in inline mode, directly as a background task): per-attachment routing by `media_type` (image → EXIF + YOLO on first image only; audio → Whisper transcript appended to description), LLM extraction → `structured_details`, embedding → `embedding_json`, Union-Find dedup → `IncidentCluster`, priority score, then status `VERIFIED` and a `incident_ai_processed` WS broadcast (only reaches clients in inline mode — a Celery worker has its own empty `ws_manager`, so the dashboard also polls every 15 s). `VERIFIED` means "AI triage done" and is the filter for dedup candidates, so it is set even when every model is mocked.
+2. `backend/app/tasks/ai_tasks.py::_process_incident` is the whole async pipeline (reached via Celery `process_incident_ai` or, in inline mode, directly as a background task): per-attachment routing by `media_type` (image → EXIF + YOLO; video → `ai_pipeline/vision/keyframes.py` samples 3 frames through YOLO and writes the best one beside the video as `keyframe_url`; only the first visual attachment sets classification/severity; audio → Whisper transcript appended to description), LLM extraction → `structured_details`, embedding → `embedding_json`, Union-Find dedup → `IncidentCluster`, priority score, then status `VERIFIED` and a `incident_ai_processed` WS broadcast (only reaches clients in inline mode — a Celery worker has its own empty `ws_manager`, so the dashboard also polls every 15 s). `VERIFIED` means "AI triage done" and is the filter for dedup candidates, so it is set even when every model is mocked.
 3. Every AI component degrades gracefully to a mock/fallback and reports it: `model_available` (YOLO, Whisper), `EmbeddingResult.is_semantic` (hash fallback when sentence-transformers is missing — dedup refuses to cluster on non-semantic vectors), and `structured_details.ai_provenance` records what actually ran. Preserve this honesty when touching the pipeline; don't invent severities/confidences from mocks.
 
 ### AI provider bridge
@@ -72,7 +72,7 @@ Local dev: use the CUDA build at `%LOCALAPPDATA%\llama.cpp\cuda-b10809\llama-ser
 
 ### Frontend
 
-Single `App.jsx` holds the three routes: `/` citizen report form, `/dashboard` dispatcher (Leaflet map + queue + detail panel), `/analytics`. `services/api.js` is the only HTTP layer. Tests live in `src/tests/` with `setup.js` (jsdom + jest-dom).
+PWA assets live in `frontend/public/` (icons generated once; `sentinel.svg` is the vector source). The service worker only registers in dev when `VITE_PWA_DEV=true` (`run.bat` sets it). Single `App.jsx` holds the three routes: `/` citizen report form, `/dashboard` dispatcher (Leaflet map + queue + detail panel), `/analytics`. `services/api.js` is the only HTTP layer. Tests live in `src/tests/` with `setup.js` (jsdom + jest-dom).
 
 ### Config
 
