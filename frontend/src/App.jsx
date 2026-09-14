@@ -68,15 +68,20 @@ function DispatcherDashboardView({ theme }) {
 
   useEffect(() => {
     loadData();
+    const RELOAD_EVENTS = ['incident_created', 'incident_status_updated', 'dispatch_assigned', 'incident_ai_processed'];
     const unsubscribe = wsService.subscribe((msg) => {
-      if (msg.event === 'incident_created' || msg.event === 'incident_status_updated' || msg.event === 'dispatch_assigned') {
+      if (RELOAD_EVENTS.includes(msg.event)) {
         loadData();
       }
     });
     const unsubscribeStatus = wsService.subscribeStatus(setFeed);
+    // When AI runs in a Celery worker it cannot reach this socket, so the
+    // REPORTED -> VERIFIED transition only arrives by polling.
+    const poll = setInterval(loadData, 15000);
     return () => {
       unsubscribe();
       unsubscribeStatus();
+      clearInterval(poll);
     };
   }, [loadData]);
 

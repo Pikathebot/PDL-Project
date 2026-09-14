@@ -29,9 +29,21 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "sentinel"
     POSTGRES_PORT: str = "5432"
     
+    # Full SQLAlchemy URL that, when set, replaces the POSTGRES_* fields. Lets a
+    # laptop without Docker run on SQLite (sqlite+aiosqlite:///./sentinel_dev.db):
+    # the models use plain Float/JSON columns, so nothing here needs PostGIS.
+    DATABASE_URL: str = ""
+
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
+        if self.DATABASE_URL:
+            return self.DATABASE_URL
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+
+    # "celery": enqueue process_incident_ai on the Redis broker (needs a
+    # worker). "inline": run the same pipeline as a FastAPI background task in
+    # the API process - no Redis, no worker, for single-machine demos.
+    AI_PROCESSING_MODE: str = "celery"
 
     # Redis & Celery
     REDIS_HOST: str = "localhost"

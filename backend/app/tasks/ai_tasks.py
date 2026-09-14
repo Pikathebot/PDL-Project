@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.tasks.celery_app import celery_app
 from backend.app.core.db import SessionLocal
+from backend.app.core.websocket_manager import ws_manager
 from backend.app.models.incident import Incident, IncidentStatus, IncidentCluster
 from backend.app.models.media import MediaType, ValidationStatus
 from backend.app.services.storage import storage_service
@@ -148,6 +149,19 @@ async def _process_incident(incident_id: int, session: AsyncSession):
     # mocked. Honesty about what actually ran is recorded separately.
     incident.status = IncidentStatus.VERIFIED
     await session.commit()
+
+    # Only reaches dashboards when the pipeline runs in the API process
+    # (AI_PROCESSING_MODE=inline). A Celery worker has its own, empty
+    # ws_manager, so there this is a no-op and the dashboard's poll covers it.
+    await ws_manager.broadcast("incident_ai_processed", {
+        "id": incident.id,
+        "tracking_id": incident.tracking_id,
+        "status": incident.status.value,
+        "severity": incident.severity,
+        "priority_score": incident.priority_score,
+        "cluster_id": incident.cluster_id,
+        "ai_provenance": provenance,
+    })
 
 
 async def _run_deduplication(incident: Incident, session: AsyncSession):

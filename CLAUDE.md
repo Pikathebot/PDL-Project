@@ -20,8 +20,9 @@ $env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m pytest ai_pipeline/tests
 
 # Backend dev server / Celery worker / seed data
 .\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --port 8000
-celery -A backend.app.tasks.celery_app.celery_app worker --loglevel=info
-$env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed
+.\.venv\Scripts\python.exe -m celery -A backend.app.tasks.celery_app.celery_app worker --loglevel=info --pool=solo   # --pool=solo required on Windows
+$env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed          # users + responders only, idempotent
+$env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed_demo     # 18 Mumbai incidents through the real pipeline; --reset to wipe & redo, --no-process to skip AI
 
 # Frontend (cd frontend)
 npm run dev          # Vite on :5173, proxies /api, /ws, /media_uploads -> :8000
@@ -37,7 +38,7 @@ docker compose -f docker-compose.dev.yml up -d
 docker compose up --build
 ```
 
-`run.bat` does all of the above for local dev on Windows. `Makefile` targets (`make test`, `make lint`) assume a POSIX shell. Python lint is `ruff check backend ai_pipeline` (`ruff.toml`: pyflakes `F` + syntax `E9` only — style codes are deliberately off). ORM forward refs like `Mapped["Responder"]` need a `TYPE_CHECKING` import or ruff reports F821.
+`run.bat` does all of the above for local dev on Windows: with Docker it runs Postgres/Redis + a Celery worker; without Docker it switches to **standalone mode** (`DATABASE_URL=sqlite+aiosqlite:///./sentinel_dev.db`, `AI_PROCESSING_MODE=inline` — the pipeline runs as a FastAPI `BackgroundTask` in the API process, no Redis needed). It also starts llama-server from `LLAMA_SERVER_EXE`/`LLAMA_MODEL_GGUF` (defaults at the top of the file) and seeds users + demo incidents. `SKIP_DEMO_SEED=1` skips the incident seed. `Makefile` targets (`make test`, `make lint`) assume a POSIX shell. Python lint is `ruff check backend ai_pipeline` (`ruff.toml`: pyflakes `F` + syntax `E9` only — style codes are deliberately off). ORM forward refs like `Mapped["Responder"]` need a `TYPE_CHECKING` import or ruff reports F821.
 
 Backend tests need no services: `backend/tests/conftest.py` swaps in an in-memory aiosqlite engine and monkeypatches `process_incident_ai.delay` to a no-op. `pytest.ini` sets `asyncio_mode = auto`, so async tests need no marker.
 
@@ -48,7 +49,7 @@ Vitest and Playwright coexist in `frontend/`; `vite.config.js` `test.include` mu
 ### Request → AI pipeline flow
 
 1. `POST /api/v1/incidents/` (`backend/app/api/v1/endpoints/incidents.py`) saves uploads via `services/storage.py` (local `media_uploads/`, served statically by FastAPI; `file_path` on `MediaAttachment` is a **URL** `/media_uploads/<uuid>.ext`, use `storage_service.resolve_path()` for filesystem access), creates the `Incident` in status `REPORTED`, broadcasts over WebSocket, then fires `process_incident_ai.delay()` (failure is swallowed so reports succeed without Redis).
-2. `backend/app/tasks/ai_tasks.py::_process_incident` is the whole async pipeline: per-attachment routing by `media_type` (image → EXIF + YOLO on first image only; audio → Whisper transcript appended to description), LLM extraction → `structured_details`, embedding → `embedding_json`, Union-Find dedup → `IncidentCluster`, priority score, then status `VERIFIED`. `VERIFIED` means "AI triage done" and is the filter for dedup candidates, so it is set even when every model is mocked.
+2. `backend/app/tasks/ai_tasks.py::_process_incident` is the whole async pipeline (reached via Celery `process_incident_ai` or, in inline mode, directly as a background task): per-attachment routing by `media_type` (image → EXIF + YOLO on first image only; audio → Whisper transcript appended to description), LLM extraction → `structured_details`, embedding → `embedding_json`, Union-Find dedup → `IncidentCluster`, priority score, then status `VERIFIED` and a `incident_ai_processed` WS broadcast (only reaches clients in inline mode — a Celery worker has its own empty `ws_manager`, so the dashboard also polls every 15 s). `VERIFIED` means "AI triage done" and is the filter for dedup candidates, so it is set even when every model is mocked.
 3. Every AI component degrades gracefully to a mock/fallback and reports it: `model_available` (YOLO, Whisper), `EmbeddingResult.is_semantic` (hash fallback when sentence-transformers is missing — dedup refuses to cluster on non-semantic vectors), and `structured_details.ai_provenance` records what actually ran. Preserve this honesty when touching the pipeline; don't invent severities/confidences from mocks.
 
 ### AI provider bridge

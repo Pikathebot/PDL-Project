@@ -75,3 +75,31 @@ async def test_nearest_responders_and_dispatch(client: AsyncClient, db):
     assert disp_data["status"] == "dispatched"
     assert disp_data["assigned_responder_id"] == responder.id
 
+
+
+@pytest.mark.asyncio
+async def test_inline_mode_schedules_pipeline_as_background_task(client, monkeypatch):
+    """
+    AI_PROCESSING_MODE=inline must run _async_process in-process instead of
+    enqueueing to Celery - that is what makes run.bat work without Redis.
+    """
+    from backend.app.api.v1.endpoints import incidents as endpoint
+    from backend.app.tasks import ai_tasks
+
+    monkeypatch.setattr(endpoint.settings, "AI_PROCESSING_MODE", "inline")
+    processed = []
+
+    async def fake_process(incident_id):
+        processed.append(incident_id)
+    monkeypatch.setattr(endpoint, "_async_process", fake_process)
+
+    def boom(*a, **kw):
+        raise AssertionError("Celery must not be used in inline mode")
+    monkeypatch.setattr(ai_tasks.process_incident_ai, "delay", boom)
+
+    res = await client.post("/api/v1/incidents/", data={
+        "category": "fire", "description": "Smoke from a shop", "latitude": 19.0, "longitude": 72.8,
+    })
+    assert res.status_code == 201
+    # BackgroundTasks run after the response inside the ASGI transport call.
+    assert processed == [res.json()["id"]]

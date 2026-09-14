@@ -9,9 +9,13 @@ from backend.app.core.websocket_manager import ws_manager
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup tasks (like connecting database pools, warming models, etc.)
+    if settings.AI_PROCESSING_MODE == "inline":
+        # The pipeline runs in this process, so load the embedding model now
+        # rather than making the first citizen report wait ~20s for it.
+        import asyncio
+        from ai_pipeline.nlp.embeddings import embeddings_engine
+        await asyncio.to_thread(embeddings_engine._load_model)
     yield
-    # Shutdown tasks (closing connections)
 
 from backend.app.api.v1.router import api_router
 

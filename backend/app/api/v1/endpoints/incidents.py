@@ -1,7 +1,7 @@
 import uuid
 import logging
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Form, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func
 from sqlalchemy.orm import selectinload
@@ -11,7 +11,8 @@ from backend.app.models.incident import Incident, IncidentCategory, IncidentStat
 from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
 from backend.app.schemas.incident import IncidentRead, IncidentTrackRead, IncidentUpdateStatus
 from backend.app.services.storage import storage_service
-from backend.app.tasks.ai_tasks import process_incident_ai
+from backend.app.tasks.ai_tasks import process_incident_ai, _async_process
+from backend.app.core.config import settings
 
 from backend.app.core.websocket_manager import ws_manager
 from backend.app.models.user import Responder, ResponderStatus
@@ -117,6 +118,7 @@ async def get_analytics_summary(db: AsyncSession = Depends(get_db)):
 
 @router.post("/", response_model=IncidentRead, status_code=status.HTTP_201_CREATED)
 async def create_incident(
+    background_tasks: BackgroundTasks,
     category: IncidentCategory = Form(...),
     description: str = Form(...),
     latitude: float = Form(...),
@@ -170,10 +172,14 @@ async def create_incident(
     await db.commit()
 
     # Fire-and-forget AI processing (vision, extraction, embeddings).
-    try:
-        process_incident_ai.delay(incident.id)
-    except Exception:
-        logger.exception("Failed to enqueue AI processing for incident %s", incident.id)
+    if settings.AI_PROCESSING_MODE == "inline":
+        # Runs after the response is sent, in this process, on its own session.
+        background_tasks.add_task(_async_process, incident.id)
+    else:
+        try:
+            process_incident_ai.delay(incident.id)
+        except Exception:
+            logger.exception("Failed to enqueue AI processing for incident %s", incident.id)
 
     # Re-fetch with media attachments loaded
     res = await db.execute(

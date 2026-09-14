@@ -134,3 +134,6 @@ frontend/playwright-report/
 
 # YOLO weights auto-downloaded by ultralytics on first detect
 *.pt
+
+# Standalone-mode SQLite database (run.bat without Docker)
+*.db
