@@ -29,11 +29,11 @@ if not exist "frontend\node_modules" (
     pushd frontend && call npm install && popd
 )
 
-REM ---- Infrastructure: Docker (Postgres/Redis/MinIO + Celery) or standalone ----
+REM ---- Infrastructure: Docker (Postgres/Redis + Celery) or standalone ----
 docker info >nul 2>&1
 if %errorlevel% neq 0 goto STANDALONE
 
-echo [OK] Docker daemon detected - starting Postgres, Redis, MinIO...
+echo [OK] Docker daemon detected - starting Postgres and Redis...
 docker compose -f docker-compose.dev.yml up -d
 echo [INFO] Waiting for Postgres...
 :WAITPG

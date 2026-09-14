@@ -7,7 +7,7 @@ from sqlalchemy import select, desc, func
 from sqlalchemy.orm import selectinload
 
 from backend.app.core.db import get_db
-from backend.app.models.incident import Incident, IncidentCategory, IncidentStatus, IncidentCluster
+from backend.app.models.incident import Incident, IncidentCategory, IncidentStatus, IncidentCluster, stamp_status_transition
 from backend.app.models.media import MediaAttachment, MediaType, ValidationStatus
 from backend.app.schemas.incident import IncidentRead, IncidentTrackRead, IncidentUpdateStatus
 from backend.app.services.storage import storage_service
@@ -20,13 +20,18 @@ from backend.app.schemas.user import ResponderRead, DispatchRequest
 from backend.app.algorithms.kd_tree import KDTree
 
 from backend.app.core.security import verify_turnstile_token
+from backend.app.core.auth import require_dispatcher
+from backend.app.models.user import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 @router.get("/analytics/heatmap")
-async def get_heatmap_data(db: AsyncSession = Depends(get_db)):
+async def get_heatmap_data(
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
+):
     res = await db.execute(
         select(Incident.id, Incident.latitude, Incident.longitude, Incident.severity, Incident.priority_score, Incident.category)
         .where(Incident.status != IncidentStatus.CLOSED)
@@ -51,17 +56,19 @@ def _enum_key(value) -> str:
 
 
 @router.get("/analytics/summary")
-async def get_analytics_summary(db: AsyncSession = Depends(get_db)):
+async def get_analytics_summary(
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
+):
     """
     Aggregate counts for the dispatcher dashboard.
 
     Every figure here is computed from the database. Fields that once reported
     fixed numbers (active_units 45, deployed_units 32, avg_response_time_minutes
-    18.4) have been removed rather than faked. Response time in particular cannot
-    be derived from this schema: there is only created_at and updated_at, and
-    updated_at is bumped by any mutation, so their difference measures "time
-    since last edit", not time to respond. Computing it honestly needs
-    dispatched_at / resolved_at columns.
+    18.4) were removed rather than faked. Response times are back now that
+    dispatched_at / resolved_at exist: each is the mean over incidents that
+    have actually reached that state, with the sample size alongside so a
+    single data point is not mistaken for a trend.
     """
     # GROUP BY in the database rather than loading every row to count it.
     cat_rows = (await db.execute(
@@ -102,6 +109,18 @@ async def get_analytics_summary(db: AsyncSession = Depends(get_db)):
 
     closed_statuses = {IncidentStatus.RESOLVED.value, IncidentStatus.CLOSED.value}
 
+    # Interval arithmetic differs between SQLite and Postgres, and the row
+    # count here is small, so average in Python over just the timestamps.
+    stamped = (await db.execute(
+        select(Incident.created_at, Incident.dispatched_at, Incident.resolved_at)
+        .where(Incident.dispatched_at.is_not(None) | Incident.resolved_at.is_not(None))
+    )).all()
+    dispatch_minutes = [(d - c).total_seconds() / 60 for c, d, _ in stamped if d]
+    resolve_minutes = [(r - c).total_seconds() / 60 for c, _, r in stamped if r]
+
+    def _avg(xs):
+        return round(sum(xs) / len(xs), 1) if xs else None
+
     return {
         "total_incidents": sum(category_counts.values()),
         "open_incidents": sum(c for k, c in status_counts.items() if k not in closed_statuses),
@@ -113,6 +132,12 @@ async def get_analytics_summary(db: AsyncSession = Depends(get_db)):
         "clusters": {
             "count": cluster_count or 0,
             "merged_reports": int(merged_reports or 0),
+        },
+        "response_time": {
+            "avg_dispatch_minutes": _avg(dispatch_minutes),
+            "dispatch_sample": len(dispatch_minutes),
+            "avg_resolve_minutes": _avg(resolve_minutes),
+            "resolve_sample": len(resolve_minutes),
         },
     }
 
@@ -210,7 +235,8 @@ async def list_incidents(
     status: Optional[IncidentStatus] = None,
     limit: int = 50,
     offset: int = 0,
-    db: AsyncSession = Depends(get_db)
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
 ):
     query = select(Incident).options(selectinload(Incident.media_attachments)).order_by(desc(Incident.priority_score))
 
@@ -247,7 +273,11 @@ async def track_incident(tracking_id: str, db: AsyncSession = Depends(get_db)):
     return incident
 
 @router.get("/{incident_id}", response_model=IncidentRead)
-async def get_incident(incident_id: int, db: AsyncSession = Depends(get_db)):
+async def get_incident(
+    incident_id: int,
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
+):
     res = await db.execute(
         select(Incident)
         .options(selectinload(Incident.media_attachments))
@@ -262,7 +292,8 @@ async def get_incident(incident_id: int, db: AsyncSession = Depends(get_db)):
 async def update_incident_status(
     incident_id: int,
     update_data: IncidentUpdateStatus,
-    db: AsyncSession = Depends(get_db)
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
 ):
     res = await db.execute(
         select(Incident)
@@ -273,7 +304,7 @@ async def update_incident_status(
     if not incident:
         raise HTTPException(status_code=404, detail="Incident not found")
 
-    incident.status = update_data.status
+    stamp_status_transition(incident, update_data.status)
     if update_data.assigned_responder_id is not None:
         incident.assigned_responder_id = update_data.assigned_responder_id
 
@@ -289,7 +320,12 @@ async def update_incident_status(
     return incident
 
 @router.get("/{incident_id}/nearest-responders", response_model=List[ResponderRead])
-async def get_nearest_responders(incident_id: int, limit: int = 5, db: AsyncSession = Depends(get_db)):
+async def get_nearest_responders(
+    incident_id: int,
+    limit: int = 5,
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
+):
     res = await db.execute(select(Incident).where(Incident.id == incident_id))
     incident = res.scalar_one_or_none()
     if not incident:
@@ -348,7 +384,8 @@ async def get_nearest_responders(incident_id: int, limit: int = 5, db: AsyncSess
 async def dispatch_responder_to_incident(
     incident_id: int,
     dispatch_req: DispatchRequest,
-    db: AsyncSession = Depends(get_db)
+    _dispatcher: User = Depends(require_dispatcher),
+    db: AsyncSession = Depends(get_db),
 ):
     res = await db.execute(
         select(Incident)
@@ -366,7 +403,7 @@ async def dispatch_responder_to_incident(
 
     # Update incident status & assignment
     incident.assigned_responder_id = responder.id
-    incident.status = IncidentStatus.DISPATCHED
+    stamp_status_transition(incident, IncidentStatus.DISPATCHED)
 
     # Update responder status
     responder.status = ResponderStatus.BUSY

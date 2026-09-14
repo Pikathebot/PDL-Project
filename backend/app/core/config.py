@@ -57,13 +57,6 @@ class Settings(BaseSettings):
     def CELERY_RESULT_BACKEND(self) -> str:
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
-    # MinIO
-    MINIO_ENDPOINT: str = "localhost:9000"
-    MINIO_ROOT_USER: str = "minioadmin"
-    MINIO_ROOT_PASSWORD: str = "minioadmin"
-    MINIO_SECURE: bool = False
-    MINIO_BUCKET_NAME: str = "sentinel-media"
-
     # CORS
     BACKEND_CORS_ORIGINS: Annotated[
         List[str], BeforeValidator(parse_cors)

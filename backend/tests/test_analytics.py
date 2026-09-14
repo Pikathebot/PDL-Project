@@ -91,3 +91,48 @@ async def test_responder_counts_reflect_db(client: AsyncClient, db: AsyncSession
     data = (await client.get("/api/v1/incidents/analytics/summary")).json()
     assert data["responder_counts"] == {"available": 2, "busy": 1, "offline": 1}
     assert data["total_responders"] == 4
+
+
+@pytest.mark.asyncio
+async def test_response_time_kpi_comes_from_transition_timestamps(client: AsyncClient, db: AsyncSession):
+    """
+    dispatched_at / resolved_at are stamped on the first transition into those
+    states and never moved by later edits, and the summary averages only over
+    incidents that actually reached them - with the sample size alongside.
+    """
+    from datetime import datetime, timedelta
+    from sqlalchemy import update
+    from backend.app.models.incident import Incident
+
+    empty = (await client.get("/api/v1/incidents/analytics/summary")).json()["response_time"]
+    assert empty == {"avg_dispatch_minutes": None, "dispatch_sample": 0,
+                     "avg_resolve_minutes": None, "resolve_sample": 0}
+
+    res = await client.post("/api/v1/incidents/", data={
+        "category": "fire", "description": "Shop on fire", "latitude": 19.0, "longitude": 72.8,
+    })
+    incident_id = res.json()["id"]
+    # Backdate creation so the interval is measurable and deterministic. A Core
+    # update keeps the ORM identity map out of it (the endpoint shares this
+    # session and eager-loads media_attachments itself).
+    await db.execute(update(Incident).where(Incident.id == incident_id)
+                     .values(created_at=datetime.utcnow() - timedelta(minutes=30)))
+    await db.commit()
+    db.expire_all()
+
+    r = await client.patch(f"/api/v1/incidents/{incident_id}/status", json={"status": "dispatched"})
+    first_dispatch = r.json()["dispatched_at"]
+    assert first_dispatch is not None and r.json()["resolved_at"] is None
+
+    # Bouncing through in_progress and back must not move the first stamp.
+    await client.patch(f"/api/v1/incidents/{incident_id}/status", json={"status": "in_progress"})
+    r = await client.patch(f"/api/v1/incidents/{incident_id}/status", json={"status": "dispatched"})
+    assert r.json()["dispatched_at"] == first_dispatch
+
+    r = await client.patch(f"/api/v1/incidents/{incident_id}/status", json={"status": "resolved"})
+    assert r.json()["resolved_at"] is not None
+
+    kpi = (await client.get("/api/v1/incidents/analytics/summary")).json()["response_time"]
+    assert kpi["dispatch_sample"] == 1 and kpi["resolve_sample"] == 1
+    assert 29.5 <= kpi["avg_dispatch_minutes"] <= 31
+    assert 29.5 <= kpi["avg_resolve_minutes"] <= 31

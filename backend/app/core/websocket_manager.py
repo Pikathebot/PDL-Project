@@ -36,15 +36,17 @@ class ConnectionManager:
 
     def _validate_token(self, token: str) -> bool:
         """
-        Validate the WebSocket auth token against the configured shared token.
-
-        This is deliberately a single static token rather than real authentication:
-        it gives the dispatcher feed a working handshake for the demo. Replace with
-        JWT signature and expiry validation before any non-demo deployment.
+        Accept either a signed dispatcher/admin JWT (what the dashboard sends
+        once logged in) or the static shared token from WS_ACCESS_TOKEN, kept
+        for scripted clients and tests.
         """
         if not token:
             return False
-        return secrets.compare_digest(token, settings.WS_ACCESS_TOKEN)
+        if secrets.compare_digest(token, settings.WS_ACCESS_TOKEN):
+            return True
+        from backend.app.core.auth import decode_access_token, DISPATCH_ROLES
+        payload = decode_access_token(token)
+        return bool(payload) and payload.get("role") in {r.value for r in DISPATCH_ROLES}
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:

@@ -51,8 +51,21 @@ async def db(_setup_db) -> AsyncGenerator[AsyncSession, None]:
         await session.rollback()
 
 @pytest.fixture
-async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    # Override get_db dependency
+async def dispatcher(db: AsyncSession):
+    """A real dispatcher row; tests log in as this user with a real JWT."""
+    from backend.app.core.auth import hash_password
+    from backend.app.models.user import User, UserRole
+    user = User(name="Test Dispatcher", email="dispatcher@test.local",
+                password_hash=hash_password("dispatch123"), role=UserRole.DISPATCHER)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@pytest.fixture
+async def anon_client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Unauthenticated client - for the citizen endpoints and for proving guards."""
     async def override_get_db():
         yield db
 
@@ -65,3 +78,15 @@ async def client(db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
         yield ac
 
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def client(anon_client: AsyncClient, dispatcher) -> AsyncGenerator[AsyncClient, None]:
+    """
+    Authenticated as a dispatcher with a real signed JWT, so every guarded
+    endpoint is exercised through the actual bearer-token path rather than a
+    dependency override. test_auth.py covers /auth/login itself.
+    """
+    from backend.app.core.auth import create_access_token
+    anon_client.headers["Authorization"] = f"Bearer {create_access_token(dispatcher)}"
+    yield anon_client

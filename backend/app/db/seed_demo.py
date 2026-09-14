@@ -20,7 +20,7 @@ from sqlalchemy import select, delete, func
 
 from backend.app.core.db import SessionLocal
 from backend.app.db.seed import seed_data
-from backend.app.models.incident import Incident, IncidentCluster, IncidentCategory, IncidentStatus
+from backend.app.models.incident import Incident, IncidentCluster, IncidentCategory, IncidentStatus, stamp_status_transition
 from backend.app.models.media import MediaAttachment
 from backend.app.models.user import Responder, ResponderStatus
 
@@ -136,16 +136,22 @@ async def _apply_status_spread(session):
     )).scalars().all()
     by_tid = {inc.tracking_id: inc for inc in incidents}
 
-    def assign(tid, status, responder_idx=None):
+    def assign(tid, status, responder_idx=None, dispatched_after_min=None, resolved_after_min=None):
+        # Timestamps are relative to the incident's own created_at so the
+        # analytics response-time KPI has honest, plausible numbers.
         inc = by_tid[tid]
+        if dispatched_after_min is not None:
+            stamp_status_transition(inc, IncidentStatus.DISPATCHED, inc.created_at + timedelta(minutes=dispatched_after_min))
+        if resolved_after_min is not None:
+            stamp_status_transition(inc, IncidentStatus.RESOLVED, inc.created_at + timedelta(minutes=resolved_after_min))
         inc.status = status
         if responder_idx is not None and responders:
             inc.assigned_responder_id = responders[responder_idx % len(responders)].id
 
-    assign(f"{DEMO_PREFIX}001", IncidentStatus.DISPATCHED, 0)   # transformer fire (cluster primary)
-    assign(f"{DEMO_PREFIX}004", IncidentStatus.IN_PROGRESS, 1)  # bus accident
-    assign(f"{DEMO_PREFIX}009", IncidentStatus.RESOLVED, 2)     # Marine Drive fender-bender
-    assign(f"{DEMO_PREFIX}012", IncidentStatus.DISPATCHED, 3)   # balcony collapse
+    assign(f"{DEMO_PREFIX}001", IncidentStatus.DISPATCHED, 0, dispatched_after_min=6)                        # transformer fire
+    assign(f"{DEMO_PREFIX}004", IncidentStatus.IN_PROGRESS, 1, dispatched_after_min=4)                       # bus accident
+    assign(f"{DEMO_PREFIX}009", IncidentStatus.RESOLVED, 2, dispatched_after_min=11, resolved_after_min=48)  # Marine Drive
+    assign(f"{DEMO_PREFIX}012", IncidentStatus.DISPATCHED, 3, dispatched_after_min=9)                        # balcony collapse
     await session.commit()
 
 

@@ -27,19 +27,6 @@ services:
       timeout: 5s
       retries: 5
 
-  minio:
-    image: minio/minio:RELEASE.2024-03-21T23-13-43Z
-    container_name: sentinel-minio
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    command: server /data --console-address ":9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - miniodata:/data
-
   backend:
     build:
       context: .
@@ -48,9 +35,11 @@ services:
     environment:
       - POSTGRES_SERVER=postgres
       - REDIS_HOST=redis
-      - MINIO_ENDPOINT=minio:9000
     ports:
       - "8000:8000"
+    volumes:
+      # Uploads are plain files; the worker must see what the API saved.
+      - media_uploads:/app/media_uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -65,7 +54,8 @@ services:
     environment:
       - POSTGRES_SERVER=postgres
       - REDIS_HOST=redis
-      - MINIO_ENDPOINT=minio:9000
+    volumes:
+      - media_uploads:/app/media_uploads
     depends_on:
       - redis
       - postgres
@@ -82,4 +72,4 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  media_uploads:

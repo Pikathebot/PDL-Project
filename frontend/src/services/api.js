@@ -1,4 +1,11 @@
+import { authHeaders, handleUnauthorized } from './auth';
+
 const API_BASE = '/api/v1';
+
+// Dispatcher-only endpoints carry the JWT; a 401 clears the session.
+function dispatcherFetch(url, options = {}) {
+  return fetch(url, { ...options, headers: authHeaders(options.headers) }).then(handleUnauthorized);
+}
 
 export async function submitIncidentReport(formData) {
   const response = await fetch(`${API_BASE}/incidents/`, {
@@ -13,7 +20,7 @@ export async function submitIncidentReport(formData) {
 
 export async function fetchIncidents(params = {}) {
   const query = new URLSearchParams(params).toString();
-  const response = await fetch(`${API_BASE}/incidents/${query ? `?${query}` : ''}`);
+  const response = await dispatcherFetch(`${API_BASE}/incidents/${query ? `?${query}` : ''}`);
   if (!response.ok) {
     throw new Error('Failed to fetch incidents list');
   }
@@ -32,7 +39,7 @@ export async function fetchIncidentByTrackingId(trackingId) {
 }
 
 export async function updateIncidentStatus(id, status, assignedResponderId = null) {
-  const response = await fetch(`${API_BASE}/incidents/${id}/status`, {
+  const response = await dispatcherFetch(`${API_BASE}/incidents/${id}/status`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ status, assigned_responder_id: assignedResponderId }),
@@ -44,7 +51,7 @@ export async function updateIncidentStatus(id, status, assignedResponderId = nul
 }
 
 export async function fetchNearestResponders(incidentId, limit = 5) {
-  const response = await fetch(`${API_BASE}/incidents/${incidentId}/nearest-responders?limit=${limit}`);
+  const response = await dispatcherFetch(`${API_BASE}/incidents/${incidentId}/nearest-responders?limit=${limit}`);
   if (!response.ok) {
     throw new Error('Failed to fetch nearest responders');
   }
@@ -52,7 +59,7 @@ export async function fetchNearestResponders(incidentId, limit = 5) {
 }
 
 export async function dispatchResponder(incidentId, responderId) {
-  const response = await fetch(`${API_BASE}/incidents/${incidentId}/dispatch`, {
+  const response = await dispatcherFetch(`${API_BASE}/incidents/${incidentId}/dispatch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ responder_id: responderId }),
@@ -64,7 +71,7 @@ export async function dispatchResponder(incidentId, responderId) {
 }
 
 export async function fetchAnalyticsSummary() {
-  const response = await fetch(`${API_BASE}/incidents/analytics/summary`);
+  const response = await dispatcherFetch(`${API_BASE}/incidents/analytics/summary`);
   if (!response.ok) {
     throw new Error('Failed to fetch analytics summary');
   }

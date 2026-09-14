@@ -32,7 +32,7 @@ npm run test:e2e     # playwright, tests/e2e/ (starts vite itself)
 npm run lint         # eslint --max-warnings 0
 npm run build
 
-# Infra (Postgres+PostGIS, Redis, MinIO) only
+# Infra (Postgres+PostGIS, Redis) only
 docker compose -f docker-compose.dev.yml up -d
 # Everything containerised (backend, celery, nginx frontend)
 docker compose up --build
@@ -66,9 +66,13 @@ Local dev: use the CUDA build at `%LOCALAPPDATA%\llama.cpp\cuda-b10809\llama-ser
 - `priority_queue.py::calculate_priority_score`: severity + corroboration + queue age + category; new incidents start at placeholder 50.0 until the pipeline runs.
 - `kd_tree.py`: nearest-responder lookup for `GET /{id}/nearest-responders` and `/dispatch`.
 
+### Auth
+
+`core/auth.py`: bcrypt + HS256 JWT (`SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`). `POST /api/v1/auth/login` → token; `require_dispatcher` (dispatcher or admin role) guards every incident endpoint except the citizen pair `POST /incidents/` and `GET /incidents/track/{id}`. Seed accounts all use password `admin123`. Tests: the `client` fixture carries a real dispatcher JWT; use `anon_client` for citizen endpoints or to prove a guard. Frontend: `services/auth.js` owns the session in `localStorage['sentinel.auth']`; `api.js::dispatcherFetch` attaches the bearer and clears the session on 401; `RequireAuth` in `App.jsx` gates `/dashboard` and `/analytics`.
+
 ### Realtime
 
-`core/websocket_manager.py` — `/ws/incidents?token=` with a shared demo token (`WS_ACCESS_TOKEN` ↔ frontend `VITE_WS_TOKEN`; mismatch closes with 4001, capacity with 4002). Messages are `{"event": ..., "data": ...}`. `frontend/src/services/websocket.js` handles reconnect/backoff and treats those codes as non-retryable.
+`core/websocket_manager.py` — `/ws/incidents?token=` accepts a dispatcher/admin JWT (what the logged-in dashboard sends) or the static `WS_ACCESS_TOKEN` (↔ frontend `VITE_WS_TOKEN`, kept for scripted clients); bad token closes with 4001, capacity with 4002. Messages are `{"event": ..., "data": ...}`. `frontend/src/services/websocket.js` handles reconnect/backoff and treats those codes as non-retryable.
 
 ### Frontend
 
@@ -76,4 +80,4 @@ PWA assets live in `frontend/public/` (icons generated once; `sentinel.svg` is t
 
 ### Config
 
-`backend/app/core/config.py::Settings` (pydantic-settings, reads root `.env`; see `.env.example` for every key). `TURNSTILE_SECRET_KEY` must stay blank until a Turnstile widget exists in the frontend — setting it 403s every report. `SQL_ECHO` stays off because logs would include reporter PII.
+`backend/app/core/config.py::Settings` (pydantic-settings, reads root `.env`; see `.env.example` for every key). Schema changes: there are no Alembic migrations — tables come from `create_all` in `seed.py`, so after adding a column (e.g. `dispatched_at`) an existing database needs `docker compose down -v` / deleting `sentinel_dev.db`. `TURNSTILE_SECRET_KEY` must stay blank until a Turnstile widget exists in the frontend — setting it 403s every report. `SQL_ECHO` stays off because logs would include reporter PII.

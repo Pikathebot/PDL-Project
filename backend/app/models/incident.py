@@ -41,6 +41,16 @@ class IncidentCluster(Base):
 
     incidents: Mapped[List["Incident"]] = relationship("Incident", back_populates="cluster", foreign_keys="[Incident.cluster_id]")
 
+def stamp_status_transition(incident: "Incident", new_status: "IncidentStatus", now: Optional[datetime] = None) -> None:
+    """Apply a status change and record first-dispatch / resolution times."""
+    now = now or datetime.utcnow()
+    if new_status == IncidentStatus.DISPATCHED and incident.dispatched_at is None:
+        incident.dispatched_at = now
+    if new_status in (IncidentStatus.RESOLVED, IncidentStatus.CLOSED) and incident.resolved_at is None:
+        incident.resolved_at = now
+    incident.status = new_status
+
+
 class Incident(Base):
     __tablename__ = "incidents"
 
@@ -70,6 +80,10 @@ class Incident(Base):
     
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    # Set once, on the first transition into DISPATCHED / RESOLVED-or-CLOSED.
+    # updated_at cannot stand in for these: it moves on every edit.
+    dispatched_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     cluster: Mapped[Optional["IncidentCluster"]] = relationship("IncidentCluster", back_populates="incidents", foreign_keys=[cluster_id])
     assigned_responder: Mapped[Optional["Responder"]] = relationship("Responder", back_populates="assigned_incidents")

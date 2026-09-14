@@ -1,3 +1,5 @@
+import { getToken } from './auth';
+
 // Close codes the backend uses to reject a handshake (see
 // backend/app/core/websocket_manager.py). Neither is worth retrying blindly:
 // a bad token stays bad, and a full server needs a longer wait.
@@ -26,7 +28,9 @@ class IncidentWebSocketService {
   getWebSocketUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host || 'localhost:5173';
-    const token = import.meta.env.VITE_WS_TOKEN ?? '';
+    // A logged-in dispatcher's JWT is accepted by the backend; the static
+    // VITE_WS_TOKEN remains as the fallback for scripted clients.
+    const token = getToken() ?? import.meta.env.VITE_WS_TOKEN ?? '';
     return `${protocol}//${host}/ws/incidents?token=${encodeURIComponent(token)}`;
   }
 

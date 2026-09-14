@@ -33,6 +33,8 @@ class IncidentRead(IncidentBase):
     media_attachments: List[MediaAttachmentRead] = []
     created_at: datetime
     updated_at: datetime
+    dispatched_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

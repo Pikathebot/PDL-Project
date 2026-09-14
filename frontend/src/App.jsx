@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   Shield, MapPin, BarChart3, Sun, Moon, Maximize2,
-  Layout, Bell
+  Layout, Bell, LogOut, Lock
 } from 'lucide-react';
 
 import CitizenReportForm from './components/citizen/CitizenReportForm';
@@ -12,6 +12,7 @@ import IncidentQueue from './components/dashboard/IncidentQueue';
 import IncidentDetailPanel from './components/dashboard/IncidentDetailPanel';
 import { fetchIncidents, fetchAnalyticsSummary } from './services/api';
 import { wsService } from './services/websocket';
+import { login, logout, getUser, subscribe as subscribeAuth } from './services/auth';
 
 function CitizenView() {
   const [tab, setTab] = useState('report');
@@ -407,6 +408,104 @@ function DispatcherDashboardView({ theme }) {
   );
 }
 
+function LoginView() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const from = location.state?.from ?? '/dashboard';
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="max-w-sm mx-auto mt-10">
+      <form onSubmit={handleSubmit} className="theme-panel p-8 rounded-3xl space-y-5 border border-cyan-500/30 shadow-2xl">
+        <div className="text-center space-y-2">
+          <Lock className="w-10 h-10 text-cyan-400 mx-auto" />
+          <h2 className="text-xl font-extrabold text-[var(--text-primary)] uppercase tracking-wider font-mono">Dispatcher Sign-in</h2>
+          <p className="text-[11px] text-[var(--text-muted)]">
+            The dispatch console and analytics are restricted to authorised operators.
+          </p>
+        </div>
+        <label className="block space-y-1">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">Email</span>
+          <input
+            type="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] font-mono focus:outline-none focus:border-cyan-500"
+          />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)]">Password</span>
+          <input
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[var(--bg-input)] border border-[var(--border-subtle)] text-sm text-[var(--text-primary)] font-mono focus:outline-none focus:border-cyan-500"
+          />
+        </label>
+        {error && (
+          <p role="alert" className="text-[11px] text-red-400 font-mono">{error}</p>
+        )}
+        <button
+          type="submit"
+          disabled={busy}
+          className="w-full py-2.5 rounded-xl bg-cyan-500 text-slate-950 text-xs font-extrabold uppercase tracking-wider disabled:opacity-50"
+        >
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+// Redirects to /login, remembering where the operator was headed.
+function RequireAuth({ user, children }) {
+  const location = useLocation();
+  if (!user) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+  return children;
+}
+
+function ResponseTimeTile({ label, minutes, sample, accent }) {
+  const text = accent === 'cyan' ? 'text-cyan-400' : 'text-emerald-400';
+  const border = accent === 'cyan' ? 'border-cyan-500/20' : 'border-emerald-500/20';
+  const formatted = minutes == null
+    ? '—'
+    : minutes >= 90
+      ? `${(minutes / 60).toFixed(1)} h`
+      : `${Math.round(minutes)} min`;
+  return (
+    <div className={`theme-panel p-5 rounded-2xl border ${border}`}>
+      <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold">{label}</span>
+      <span className={`text-3xl font-extrabold ${text} font-mono block mt-1`}>{formatted}</span>
+      <span className="text-[10px] text-[var(--text-muted)] font-mono">
+        {sample === 0 ? 'no incidents have reached this state yet' : `n = ${sample} incident${sample === 1 ? '' : 's'}`}
+      </span>
+    </div>
+  );
+}
+
 function AnalyticsView() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -471,6 +570,24 @@ function AnalyticsView() {
             </div>
           </div>
 
+          {/* Response times: mean of (dispatched_at - created_at) and
+              (resolved_at - created_at) over incidents that reached that state.
+              The sample size is shown so n=1 is not read as a trend. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ResponseTimeTile
+              label="Avg Time to Dispatch"
+              minutes={data.response_time?.avg_dispatch_minutes}
+              sample={data.response_time?.dispatch_sample ?? 0}
+              accent="cyan"
+            />
+            <ResponseTimeTile
+              label="Avg Time to Resolve"
+              minutes={data.response_time?.avg_resolve_minutes}
+              sample={data.response_time?.resolve_sample ?? 0}
+              accent="emerald"
+            />
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="theme-panel p-5 rounded-3xl space-y-2">
               <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider border-b border-[var(--border-subtle)] pb-2">
@@ -530,6 +647,17 @@ export default function App() {
 
   const toggleTheme = () => setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
 
+  // Dispatcher session. auth.js owns storage; this mirrors it into React so
+  // the guard and header re-render on login, logout, and a 401 from the API.
+  const [user, setUser] = useState(() => getUser());
+  const navigate = useNavigate();
+  useEffect(() => subscribeAuth((session) => setUser(session?.user ?? null)), []);
+  const handleLogout = () => {
+    logout();
+    wsService.disconnect();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[var(--bg-app)]">
       {/* Floating Top Navigation Header (Matching Mockup Header) */}
@@ -588,12 +716,30 @@ export default function App() {
               {theme === 'dark' ? <Sun className="w-4 h-4 text-yellow-400" /> : <Moon className="w-4 h-4 text-cyan-600" />}
             </button>
 
-            {/* No authentication exists in this application, so there is no signed-in
-                user to show. Saying so is more honest than inventing one. */}
-            <div className="hidden sm:flex items-center pl-2 border-l border-[var(--border-subtle)]">
-              <span className="px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-mono font-extrabold uppercase tracking-wider">
-                Demo — unauthenticated
-              </span>
+            <div className="hidden sm:flex items-center pl-2 border-l border-[var(--border-subtle)] space-x-2">
+              {user ? (
+                <>
+                  <div className="text-right leading-tight">
+                    <span className="block text-[11px] font-bold text-[var(--text-primary)]">{user.name}</span>
+                    <span className="block text-[9px] font-mono uppercase tracking-wider text-cyan-400">{user.role}</span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 rounded-full bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-red-400 transition"
+                    aria-label="Sign out"
+                    title="Sign out"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="px-2.5 py-1 rounded-full bg-[var(--bg-input)] border border-[var(--border-subtle)] text-[var(--text-secondary)] text-[9px] font-mono font-extrabold uppercase tracking-wider hover:text-cyan-400"
+                >
+                  Dispatcher sign-in
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -603,8 +749,15 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
         <Routes>
           <Route path="/" element={<CitizenView />} />
-          <Route path="/dashboard" element={<DispatcherDashboardView theme={theme} />} />
-          <Route path="/analytics" element={<AnalyticsView />} />
+          <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginView />} />
+          <Route
+            path="/dashboard"
+            element={<RequireAuth user={user}><DispatcherDashboardView theme={theme} /></RequireAuth>}
+          />
+          <Route
+            path="/analytics"
+            element={<RequireAuth user={user}><AnalyticsView /></RequireAuth>}
+          />
         </Routes>
       </main>
     </div>

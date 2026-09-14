@@ -105,10 +105,9 @@ ai_pipeline/nlp/*.gguf
 _docx_temp/
 _docx_temp.zip
 
-# MinIO data & local Postgres storage
+# Local Postgres storage
 docker/data/
 pgdata/
-miniodata/
 
 # Environment configurations
 .env
@@ -137,3 +136,6 @@ frontend/playwright-report/
 
 # Standalone-mode SQLite database (run.bat without Docker)
 *.db
+
+# Unrelated project spec that lives in this checkout
+dsa-cp-mentor-spec.md

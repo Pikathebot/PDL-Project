@@ -21,6 +21,7 @@ const summary = {
   responder_counts: { available: 7, busy: 5, offline: 2 },
   total_responders: 14,
   clusters: { count: 2, merged_reports: 5 },
+  response_time: { avg_dispatch_minutes: 7.4, dispatch_sample: 3, avg_resolve_minutes: null, resolve_sample: 0 },
 };
 
 const renderAnalytics = () =>
@@ -31,7 +32,15 @@ const renderAnalytics = () =>
   );
 
 describe('Analytics View Telemetry', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // /analytics sits behind the dispatcher login; these tests are about the
+    // telemetry, so start with a session already present.
+    localStorage.setItem('sentinel.auth', JSON.stringify({
+      access_token: 'test-token',
+      user: { id: 1, name: 'Test Dispatcher', email: 'd@test', role: 'dispatcher' },
+    }));
+  });
 
   it('renders metrics computed from the API payload', async () => {
     api.fetchAnalyticsSummary.mockResolvedValue(summary);
@@ -47,6 +56,11 @@ describe('Analytics View Telemetry', () => {
     expect(screen.getByText('7')).toBeInTheDocument();
     expect(screen.getByText('/ 14')).toBeInTheDocument();
     expect(screen.getByText('/ 5 merged')).toBeInTheDocument();
+    // Response-time KPI: value + sample size when data exists, an honest
+    // placeholder when nothing has reached that state.
+    expect(screen.getByText('7 min')).toBeInTheDocument();
+    expect(screen.getByText('n = 3 incidents')).toBeInTheDocument();
+    expect(screen.getByText('no incidents have reached this state yet')).toBeInTheDocument();
   });
 
   it('never renders the previously fabricated constants', async () => {
