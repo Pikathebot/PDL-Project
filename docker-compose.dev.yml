@@ -7,7 +7,10 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sentinel
     ports:
-      - "5432:5432"
+      # Host port comes from POSTGRES_PORT in .env (compose reads it too), so
+      # a machine with a native PostgreSQL on 5432 can move this to 5433 and
+      # the backend follows automatically.
+      - "${POSTGRES_PORT:-5432}:5432"
 
   redis:
     image: redis:7-alpine

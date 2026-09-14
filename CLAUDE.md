@@ -32,7 +32,9 @@ npm run test:e2e     # playwright, tests/e2e/ (starts vite itself)
 npm run lint         # eslint --max-warnings 0
 npm run build
 
-# Infra (Postgres+PostGIS, Redis) only
+# Infra (Postgres+PostGIS, Redis) only. This machine has a native PostgreSQL 18
+# service on 5432 that silently wins connections, so .env sets POSTGRES_PORT=5433
+# and the dev compose maps the container to that host port.
 docker compose -f docker-compose.dev.yml up -d
 # Everything containerised (backend, celery, nginx frontend)
 docker compose up --build
