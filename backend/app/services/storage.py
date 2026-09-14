@@ -2,7 +2,6 @@ import os
 import uuid
 import aiofiles
 from fastapi import UploadFile
-from backend.app.core.config import settings
 
 UPLOAD_DIR = os.path.join(os.getcwd(), "media_uploads")
 

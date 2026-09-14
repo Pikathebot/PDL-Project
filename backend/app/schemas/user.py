@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
-from backend.app.models.user import UserRole, ResponderStatus
+from backend.app.models.user import ResponderStatus
 
 class ResponderRead(BaseModel):
     id: int

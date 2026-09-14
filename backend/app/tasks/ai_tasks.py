@@ -9,7 +9,7 @@ from backend.app.core.db import SessionLocal
 from backend.app.models.incident import Incident, IncidentStatus, IncidentCluster
 from backend.app.models.media import MediaType, ValidationStatus
 from backend.app.services.storage import storage_service
-from backend.app.algorithms.union_find import UnionFind, evaluate_incident_duplication, haversine_distance
+from backend.app.algorithms.union_find import UnionFind, evaluate_incident_duplication
 from ai_pipeline.vision.detector import yolo_detector
 from ai_pipeline.nlp.extractor import llm_extractor
 from ai_pipeline.nlp.embeddings import embeddings_engine
@@ -103,9 +103,18 @@ async def _process_incident(incident_id: int, session: AsyncSession):
     if transcripts:
         analysis_text = " ".join([incident.description] + transcripts)
 
-    # 2. LLM Extraction
+    # 2. LLM Extraction. The provider always returns `model_available` and
+    # `parsed`; when a real model parsed cleanly and vision had no opinion, its
+    # severity_rating is the best signal we have and replaces the reporter's
+    # self-assessment. Vision (a direct look at the evidence) still wins.
     extracted_details = await llm_extractor.extract_details(analysis_text)
     incident.structured_details = extracted_details
+    llm_ran = bool(extracted_details.get("model_available"))
+    if llm_ran and extracted_details.get("parsed") and provenance["vision"] != "yolov8":
+        rating = extracted_details.get("severity_rating")
+        if isinstance(rating, int) and 1 <= rating <= 5:
+            incident.severity = rating
+            provenance["severity_source"] = "llm"
 
     # 3. Vector Embedding. Provenance travels with the vector: dedup must know
     # whether this came from a real model or the offline hash fallback.
@@ -128,7 +137,8 @@ async def _process_incident(incident_id: int, session: AsyncSession):
     # Record which components genuinely ran. structured_details is already
     # exposed on IncidentRead, so this needs no schema change and lets the UI
     # distinguish model-backed triage from a mocked pass.
-    provenance["llm"] = "mock" if str(extracted_details).startswith("{'raw_text'") else "llm"
+    provenance["llm"] = "llm" if llm_ran else "unavailable"
+    provenance["llm_backend"] = f"{llm_extractor.provider.name}:{llm_extractor.provider.model_name}"
     provenance["embedding"] = embedding.model
     if isinstance(incident.structured_details, dict):
         incident.structured_details = {**incident.structured_details, "ai_provenance": provenance}

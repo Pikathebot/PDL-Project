@@ -1,6 +1,20 @@
-default_provider: llamacpp
+# Overridden by AI_PROVIDER in the backend .env when the extractor is built
+# from the backend (see ai_pipeline/nlp/extractor.py).
+default_provider: llamaserver
 
 providers:
+  # llama.cpp llama-server.exe: `llama-server -m <model>.gguf --port 8080 -c 4096`
+  llamaserver:
+    api_url: http://localhost:8080/v1
+    model_name: local-gguf
+    temperature: 0.2
+    timeout: 120
+    # Thinking models (Qwen3 family) otherwise spend the whole budget on
+    # hidden reasoning and return empty content. Ignored by non-thinking models.
+    extra_body:
+      chat_template_kwargs:
+        enable_thinking: false
+
   llamacpp:
     model_path: models/gemma-4-e4b-qat.gguf
     n_ctx: 4096

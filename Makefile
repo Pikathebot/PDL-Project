@@ -11,7 +11,7 @@ test:
 	cd frontend && npm run test:unit
 
 lint:
-	flake8 backend
+	ruff check backend ai_pipeline
 	cd frontend && npm run lint
 
 migrate:

@@ -1,5 +1,5 @@
 import math
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Any
 
 # Duplicate-detection thresholds. Two reports describe the same event only if
 # they are close in space, close in time, AND semantically similar.

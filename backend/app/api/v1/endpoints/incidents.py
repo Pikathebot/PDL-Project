@@ -14,7 +14,7 @@ from backend.app.services.storage import storage_service
 from backend.app.tasks.ai_tasks import process_incident_ai
 
 from backend.app.core.websocket_manager import ws_manager
-from backend.app.models.user import Responder, ResponderStatus, User
+from backend.app.models.user import Responder, ResponderStatus
 from backend.app.schemas.user import ResponderRead, DispatchRequest
 from backend.app.algorithms.kd_tree import KDTree
 

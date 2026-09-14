@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from datetime import datetime
 from sqlalchemy import select
 from backend.app.core.db import SessionLocal, engine
 from backend.app.models.base import Base

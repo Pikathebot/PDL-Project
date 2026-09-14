@@ -1,12 +1,21 @@
 import os
+from typing import Optional, Dict, Any
 import yaml
-from typing import Optional
+
 from ai_pipeline.providers.base import AIProvider
 from ai_pipeline.providers.llamaccp_provider import LlamaCppProvider
+from ai_pipeline.providers.llamaserver_provider import LlamaServerProvider
 from ai_pipeline.providers.lmstudio_provider import LMStudioProvider
 from ai_pipeline.providers.openai_provider import OpenAIProvider
 
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config.yaml")
+
+PROVIDERS = {
+    "llamaserver": LlamaServerProvider,
+    "llamacpp": LlamaCppProvider,
+    "lmstudio": LMStudioProvider,
+    "openai": OpenAIProvider,
+}
 
 
 def _resolve_api_key(provider_config: dict) -> dict:
@@ -18,31 +27,41 @@ def _resolve_api_key(provider_config: dict) -> dict:
     """
     resolved = dict(provider_config)
     env_name = resolved.pop("api_key_env", None)
-    if "api_key" not in resolved:
+    if not resolved.get("api_key"):
         resolved["api_key"] = os.environ.get(env_name, "") if env_name else ""
     return resolved
 
 
-def get_ai_provider(provider_name: Optional[str] = None) -> AIProvider:
+def _load_config() -> Dict[str, Any]:
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH, "r") as f:
-            config = yaml.safe_load(f)
-    else:
-        config = {"default_provider": "llamacpp", "providers": {}}
+            return yaml.safe_load(f) or {}
+    return {"default_provider": "llamaserver", "providers": {}}
 
-    target_provider = provider_name or config.get("default_provider", "llamacpp")
-    provider_config = config.get("providers", {}).get(target_provider, {})
 
-    if target_provider == "lmstudio":
-        return LMStudioProvider(**provider_config)
-    elif target_provider == "openai":
-        openai_config = _resolve_api_key(provider_config)
-        if not openai_config["api_key"]:
+def get_ai_provider(provider_name: Optional[str] = None, overrides: Optional[Dict[str, Any]] = None) -> AIProvider:
+    """
+    Build the provider named by `provider_name` (else config.yaml's
+    default_provider). `overrides` are constructor kwargs layered on top of the
+    yaml block - the backend passes its .env values through here so an operator
+    can point at a different server without editing config.yaml.
+    """
+    config = _load_config()
+    target_provider = provider_name or config.get("default_provider", "llamaserver")
+    if target_provider not in PROVIDERS:
+        raise ValueError(
+            f"Unknown AI provider '{target_provider}'. Choose one of: {', '.join(PROVIDERS)}."
+        )
+
+    provider_config = dict(config.get("providers", {}).get(target_provider, {}))
+    provider_config.update({k: v for k, v in (overrides or {}).items() if v not in (None, "")})
+
+    if target_provider == "openai":
+        provider_config = _resolve_api_key(provider_config)
+        if not provider_config["api_key"]:
             raise ValueError(
                 "The 'openai' provider is selected but no API key is set. "
-                f"Export {provider_config.get('api_key_env', 'OPENAI_API_KEY')} "
-                "or switch default_provider in ai_pipeline/config.yaml."
+                "Set OPENAI_API_KEY or switch AI_PROVIDER / default_provider to llamaserver."
             )
-        return OpenAIProvider(**openai_config)
-    else:
-        return LlamaCppProvider(**provider_config)
+
+    return PROVIDERS[target_provider](**provider_config)

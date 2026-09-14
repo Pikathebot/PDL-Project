@@ -2,7 +2,7 @@ import logging
 import secrets
 import time
 from typing import List, Dict, Any
-from fastapi import WebSocket, WebSocketDisconnect, Query
+from fastapi import WebSocket, Query
 
 from backend.app.core.config import settings
 

@@ -1,7 +1,7 @@
 import math
 import logging
 from typing import Dict, Any, Optional, Tuple
-from PIL import Image, ExifTags
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 

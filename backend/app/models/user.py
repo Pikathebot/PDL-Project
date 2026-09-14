@@ -1,9 +1,12 @@
 import enum
 from datetime import datetime
-from typing import Optional, List
-from sqlalchemy import String, DateTime, Enum, ForeignKey, Float, Boolean, Text
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import String, DateTime, Enum, ForeignKey, Float, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.models.base import Base
+
+if TYPE_CHECKING:
+    from backend.app.models.incident import Incident
 
 class UserRole(str, enum.Enum):
     ADMIN = "admin"

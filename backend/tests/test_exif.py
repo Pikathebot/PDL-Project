@@ -1,5 +1,3 @@
-import os
-import pytest
 from PIL import Image
 from ai_pipeline.vision.exif import exif_verifier
 

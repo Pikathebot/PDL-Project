@@ -1,0 +1,8 @@
+# Bug-class checks only (pyflakes + syntax). Style codes are deliberately off:
+# they would flag most of the codebase for no correctness gain.
+target-version = "py310"
+line-length = 120
+extend-exclude = [".venv", "frontend", "graphify-out", "media_uploads", "dist"]
+
+[lint]
+select = ["F", "E9"]

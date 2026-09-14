@@ -1,9 +1,13 @@
 import enum
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from sqlalchemy import String, DateTime, Enum, ForeignKey, Float, Integer, Text, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from backend.app.models.base import Base
+
+if TYPE_CHECKING:  # relationship() resolves these by name at mapper-configure time
+    from backend.app.models.media import MediaAttachment
+    from backend.app.models.user import Responder
 
 class IncidentCategory(str, enum.Enum):
     ROAD_ACCIDENT = "road_accident"

@@ -1,6 +1,5 @@
-import os
 from typing import List, Union
-from pydantic import AnyHttpUrl, BeforeValidator
+from pydantic import BeforeValidator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing_extensions import Annotated
 
@@ -59,11 +58,16 @@ class Settings(BaseSettings):
     ] = ["http://localhost:5173", "http://127.0.0.1:5173"]
 
     # AI Config
-    AI_PROVIDER: str = "llamacpp"  # llamacpp, lmstudio, openai
+    # One of: llamaserver (llama-server.exe over HTTP - the dev default),
+    # llamacpp (in-process llama-cpp-python), lmstudio, openai.
+    AI_PROVIDER: str = "llamaserver"
 
     # Echo every SQL statement to stdout. Off by default: the log includes
     # incident descriptions and reporter phone numbers.
     SQL_ECHO: bool = False
+    LLAMASERVER_API_URL: str = "http://localhost:8080/v1"
+    # Label only: llama-server serves whatever GGUF it was launched with.
+    LLAMASERVER_MODEL: str = "local-gguf"
     LLAMA_MODEL_PATH: str = "models/gemma-4-e4b-qat.gguf"
     LMSTUDIO_API_URL: str = "http://localhost:1234/v1"
     OPENAI_API_KEY: str = ""

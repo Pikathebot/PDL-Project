@@ -131,3 +131,6 @@ graphify-out/
 # Playwright run artifacts
 frontend/test-results/
 frontend/playwright-report/
+
+# YOLO weights auto-downloaded by ultralytics on first detect
+*.pt
