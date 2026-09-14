@@ -396,7 +396,7 @@ function DispatcherDashboardView({ theme }) {
 
       {/* Floating Selected Incident Triage Panel */}
       {selectedIncident && (
-        <div className="fixed inset-x-0 bottom-6 z-[2000] max-w-4xl mx-auto px-4">
+        <div className="fixed inset-x-0 top-24 bottom-6 z-[2000] max-w-4xl mx-auto px-4 flex flex-col justify-end pointer-events-none [&>*]:pointer-events-auto">
           <IncidentDetailPanel
             incident={selectedIncident}
             onClose={() => setSelectedIncident(null)}

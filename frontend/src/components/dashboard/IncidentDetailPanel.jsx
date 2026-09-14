@@ -19,6 +19,12 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   const [dispatchingId, setDispatchingId] = useState(null);
 
   useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  useEffect(() => {
     if (incident?.id) {
       setLoadingResponders(true);
       fetchNearestResponders(incident.id)
@@ -59,8 +65,11 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   };
 
   return (
-    <div className="theme-panel p-5 rounded-2xl space-y-4">
-      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3">
+    <div className="theme-panel p-5 rounded-2xl flex flex-col max-h-full">
+      {/* Header stays put so the close button is always reachable; the rest
+          scrolls. Without the cap a long panel grew past the top of the
+          viewport and took the X with it. */}
+      <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-3 shrink-0">
         <div>
           <div className="flex items-center space-x-2">
             <span className="text-xs text-sky-500 font-mono font-bold">{incident.tracking_id}</span>
@@ -72,11 +81,17 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
             {incident.category.replace('_', ' ')}
           </h3>
         </div>
-        <button onClick={onClose} className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition">
+        <button
+          onClick={onClose}
+          aria-label="Close incident panel"
+          title="Close (Esc)"
+          className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-input)] transition"
+        >
           <X className="w-4 h-4" />
         </button>
       </div>
 
+      <div className="overflow-y-auto min-h-0 pt-4 space-y-4 -mr-2 pr-2">
       <div className="space-y-3 text-xs">
         <div>
           <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] block mb-1">Incident Report Description</span>
@@ -234,6 +249,7 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
             </button>
           ))}
         </div>
+      </div>
       </div>
     </div>
   );
