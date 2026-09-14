@@ -52,11 +52,17 @@ set "MODE=Standalone (SQLite, inline AI)"
 :LLM
 if "%LLAMA_MODEL_GGUF%"=="" goto SEED
 if not exist "%LLAMA_SERVER_EXE%" (
-    echo [WARN] llama-server not found at %LLAMA_SERVER_EXE% - LLM extraction will be unavailable.
+    echo [WARN] llama-server not found - LLM extraction will be unavailable.
+    echo        looked for: "%LLAMA_SERVER_EXE%"
     goto SEED
 )
 if not exist "%LLAMA_MODEL_GGUF%" (
-    echo [WARN] Model not found at %LLAMA_MODEL_GGUF% - LLM extraction will be unavailable.
+    echo [WARN] Model not found - LLM extraction will be unavailable.
+    echo        looked for: "%LLAMA_MODEL_GGUF%"
+    goto SEED
+)
+curl -s -m 2 http://localhost:8080/health | find "ok" >nul 2>&1 && (
+    echo [OK] llama-server already running on :8080
     goto SEED
 )
 echo [INFO] Starting llama-server with %LLAMA_MODEL_GGUF%
@@ -71,8 +77,9 @@ REM the queue can be reset without touching accounts:
 REM     %PY% -m backend.app.db.seed_demo --reset
 echo [INFO] Seeding users and responders...
 call %PY% -m backend.app.db.seed
+REM No parentheses inside the block: cmd would treat them as its end.
 if "%SKIP_DEMO_SEED%"=="" (
-    echo [INFO] Seeding demo incidents through the AI pipeline (skips if present, ~2 min first time)...
+    echo [INFO] Seeding demo incidents through the AI pipeline - skipped if present, ~2 min first time...
     call %PY% -m backend.app.db.seed_demo
 )
 
@@ -86,8 +93,8 @@ echo   - Dispatcher:        http://localhost:5173/dashboard
 echo ============================================================
 echo.
 
+REM --pool=solo: the default prefork pool does not work on Windows.
 if "%AI_PROCESSING_MODE%"=="celery" (
-    REM --pool=solo: the default prefork pool does not work on Windows.
     start "Sentinel Celery Worker" cmd /k "%PY% -m celery -A backend.app.tasks.celery_app.celery_app worker --loglevel=info --pool=solo"
 )
 start "Sentinel FastAPI Backend" cmd /k "%PY% -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000"
