@@ -20,8 +20,8 @@ test.describe('Citizen Incident Reporting E2E Flow', () => {
     // actually entered.
     const latInput = page.locator('input[type="number"]').first();
     const lngInput = page.locator('input[type="number"]').nth(1);
-    await latInput.fill('19.0760');
-    await lngInput.fill('72.8777');
+    await latInput.fill('13.0760');
+    await lngInput.fill('80.2777');
 
     // Capture what the client actually sends, not just what the server replies.
     let postBody = null;
@@ -37,8 +37,8 @@ test.describe('Citizen Incident Reporting E2E Flow', () => {
             category: 'electrical_hazard',
             description: 'E2E Test: Heavy water leakage near sub-station.',
             phone_number: '+919876543210',
-            latitude: 19.076,
-            longitude: 72.8777,
+            latitude: 13.076,
+            longitude: 80.2777,
             status: 'reported',
             severity: 3,
             priority_score: 50,
@@ -60,8 +60,8 @@ test.describe('Citizen Incident Reporting E2E Flow', () => {
     expect(postBody).toBeTruthy();
     expect(postBody).toContain('E2E Test: Heavy water leakage near sub-station.');
     expect(postBody).toContain('electrical_hazard');
-    expect(postBody).toContain('19.076');
-    expect(postBody).toContain('72.8777');
+    expect(postBody).toContain('13.076');
+    expect(postBody).toContain('80.2777');
     expect(postBody).toContain('+919876543210');
   });
 

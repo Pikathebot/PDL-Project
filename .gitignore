@@ -139,3 +139,9 @@ frontend/playwright-report/
 
 # Unrelated project spec that lives in this checkout
 dsa-cp-mentor-spec.md
+
+# Runtime uploads, PWA dev build, local DB dumps
+media_uploads/*
+!media_uploads/.gitkeep
+frontend/dev-dist/
+*.sql

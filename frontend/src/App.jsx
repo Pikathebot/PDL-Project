@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Routes, Route, Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   Shield, MapPin, BarChart3, Sun, Moon, Maximize2,
@@ -51,13 +51,20 @@ function DispatcherDashboardView({ theme }) {
   const [loadError, setLoadError] = useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [feed, setFeed] = useState({ status: 'disconnected', detail: null });
+  const hasAutoSelected = useRef(false);
 
   const loadData = useCallback(async () => {
     try {
       const [list, summary] = await Promise.all([fetchIncidents({}), fetchAnalyticsSummary()]);
       setIncidents(list);
       setAnalytics(summary);
-      setSelectedIncident((prev) => prev ?? list[0] ?? null);
+      // Only auto-open a panel on the dashboard's first load. Reusing this on
+      // every refresh (15s poll, every WS event) reopened the panel right
+      // after the dispatcher closed it, since a closed panel is `null` too.
+      if (!hasAutoSelected.current) {
+        hasAutoSelected.current = true;
+        setSelectedIncident((prev) => prev ?? list[0] ?? null);
+      }
       setLoadError(null);
     } catch (err) {
       console.error(err);
@@ -104,13 +111,13 @@ function DispatcherDashboardView({ theme }) {
         <div className="p-4 rounded-2xl border border-red-500/40 bg-red-500/10 text-red-300 text-xs space-y-1">
           {loadError && (
             <p>
-              <span className="font-extrabold uppercase tracking-wider">Backend unreachable — </span>
+              <span className="font-extrabold uppercase tracking-wider">Backend unreachable.</span>{' '}
               {loadError} Figures below may be stale.
             </p>
           )}
           {(feed.status === 'unauthorized' || feed.status === 'failed') && (
             <p>
-              <span className="font-extrabold uppercase tracking-wider">Live feed unavailable — </span>
+              <span className="font-extrabold uppercase tracking-wider">Live feed unavailable.</span>{' '}
               {feed.detail} Incidents will not update until the page is reloaded.
             </p>
           )}
@@ -164,21 +171,21 @@ function DispatcherDashboardView({ theme }) {
           </div>
           <div className="flex items-baseline space-x-2 mb-3">
             <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
-              {analytics ? analytics.total_responders : '—'}
+              {analytics ? analytics.total_responders : '-'}
             </span>
             <span className="text-xs text-[var(--text-muted)] font-mono">TOTAL UNITS</span>
           </div>
           <div className="grid grid-cols-3 gap-1.5 pt-1 text-center">
             <div className="p-2 rounded-2xl bg-cyan-500/10 border border-cyan-500/30">
-              <span className="text-base font-extrabold text-cyan-400 font-mono block">{responders ? responders.busy : '—'}</span>
+              <span className="text-base font-extrabold text-cyan-400 font-mono block">{responders ? responders.busy : '-'}</span>
               <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-tighter">DEPLOYED</span>
             </div>
             <div className="p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
-              <span className="text-base font-extrabold text-emerald-400 font-mono block">{responders ? responders.available : '—'}</span>
+              <span className="text-base font-extrabold text-emerald-400 font-mono block">{responders ? responders.available : '-'}</span>
               <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter">AVAILABLE</span>
             </div>
             <div className="p-2 rounded-2xl bg-red-500/10 border border-red-500/30">
-              <span className="text-base font-extrabold text-red-400 font-mono block">{responders ? responders.offline : '—'}</span>
+              <span className="text-base font-extrabold text-red-400 font-mono block">{responders ? responders.offline : '-'}</span>
               <span className="text-[9px] font-bold text-red-400 uppercase tracking-tighter">OFFLINE</span>
             </div>
           </div>
@@ -194,7 +201,7 @@ function DispatcherDashboardView({ theme }) {
           </div>
           <div className="flex items-baseline space-x-2 mb-3">
             <span className="text-4xl font-extrabold text-[var(--text-primary)] font-mono tracking-tight">
-              {clusters ? clusters.count : '—'}
+              {clusters ? clusters.count : '-'}
             </span>
             <span className="text-xs text-amber-400 font-bold font-mono">
               {clusters ? `${clusters.merged_reports} REPORTS MERGED` : ''}
@@ -289,7 +296,7 @@ function DispatcherDashboardView({ theme }) {
               <div className="flex items-center justify-between border-b border-[var(--border-subtle)] pb-2.5">
                 <h3 className="text-xs font-bold text-[var(--text-primary)] uppercase tracking-wider">Hazard Categories</h3>
                 <span className="text-[10px] px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded-full border border-cyan-500/30 font-mono font-bold">
-                  {analytics ? `${analytics.total_incidents} TOTAL` : '—'}
+                  {analytics ? `${analytics.total_incidents} TOTAL` : '-'}
                 </span>
               </div>
               {!analytics || analytics.total_incidents === 0 ? (
@@ -491,7 +498,7 @@ function ResponseTimeTile({ label, minutes, sample, accent }) {
   const text = accent === 'cyan' ? 'text-cyan-400' : 'text-emerald-400';
   const border = accent === 'cyan' ? 'border-cyan-500/20' : 'border-emerald-500/20';
   const formatted = minutes == null
-    ? '—'
+    ? '-'
     : minutes >= 90
       ? `${(minutes / 60).toFixed(1)} h`
       : `${Math.round(minutes)} min`;
@@ -535,13 +542,13 @@ function AnalyticsView() {
         <h2 className="text-2xl font-extrabold text-[var(--text-primary)]">Analytics & SLA Telemetry Engine</h2>
         <p className="text-[var(--text-secondary)] text-sm leading-relaxed max-w-2xl mx-auto">
           Category and severity distribution, responder availability, and duplicate-cluster
-          counts — all computed from the incident database.
+          counts, all computed from the incident database.
         </p>
       </div>
 
       {!data ? (
         <div className="theme-panel p-8 rounded-3xl text-center text-xs text-red-400">
-          Analytics unavailable — the backend did not respond.
+          Analytics unavailable. The backend did not respond.
         </div>
       ) : (
         <>

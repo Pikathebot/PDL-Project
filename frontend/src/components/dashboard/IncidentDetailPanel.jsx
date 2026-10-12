@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Cpu, Navigation, Send, CheckCircle2 } from 'lucide-react';
+import { X, Cpu, Navigation, Send, CheckCircle2, CircleAlert } from 'lucide-react';
 import { updateIncidentStatus, fetchNearestResponders, dispatchResponder } from '../../services/api';
+import { aiDescribed } from '../../utils/description';
 
 const STATUS_OPTIONS = [
   'reported',
@@ -17,6 +18,7 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
   const [responders, setResponders] = useState([]);
   const [loadingResponders, setLoadingResponders] = useState(false);
   const [dispatchingId, setDispatchingId] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -42,11 +44,12 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
 
   const handleStatusChange = async (newStatus) => {
     setUpdating(true);
+    setActionError(null);
     try {
       const updated = await updateIncidentStatus(incident.id, newStatus);
       onUpdate(updated);
     } catch (err) {
-      alert('Failed to update incident status.');
+      setActionError('Failed to update incident status.');
     } finally {
       setUpdating(false);
     }
@@ -54,11 +57,12 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
 
   const handleDispatch = async (responderId) => {
     setDispatchingId(responderId);
+    setActionError(null);
     try {
       const updated = await dispatchResponder(incident.id, responderId);
       onUpdate(updated);
     } catch (err) {
-      alert('Failed to dispatch responder.');
+      setActionError('Failed to dispatch responder.');
     } finally {
       setDispatchingId(null);
     }
@@ -93,10 +97,24 @@ export default function IncidentDetailPanel({ incident, onClose, onUpdate }) {
 
       <div className="overflow-y-auto min-h-0 pt-4 space-y-4 -mr-2 pr-2">
       <div className="space-y-3 text-xs">
+        {actionError && (
+          <p role="alert" className="flex items-start gap-1.5 text-[11px] font-semibold text-red-400">
+            <CircleAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+            <span>{actionError}</span>
+          </p>
+        )}
+
         <div>
-          <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] block mb-1">Incident Report Description</span>
+          <span className="text-[var(--text-muted)] font-semibold uppercase tracking-wider text-[10px] flex items-center gap-2 mb-1">
+            Incident Report Description
+            {aiDescribed(incident) && (
+              <span className="normal-case tracking-normal px-1.5 py-0.5 rounded-md bg-sky-500/10 border border-sky-500/30 text-sky-400">
+                AI-generated from the attached media
+              </span>
+            )}
+          </span>
           <p className="p-3 bg-[var(--bg-input)] rounded-xl text-[var(--text-primary)] border border-[var(--border-subtle)] font-medium leading-relaxed">
-            {incident.description}
+            {incident.description || <span className="italic text-[var(--text-muted)]">No written description. The AI is describing the attached media.</span>}
           </p>
         </div>
 

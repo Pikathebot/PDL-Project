@@ -8,7 +8,7 @@ from ai_pipeline.providers.llamaserver_provider import LlamaServerProvider
 
 GOOD_RECORD = {
     "hazard_type": "electrical fire",
-    "location_name": "Andheri sub-station",
+    "location_name": "Guindy sub-station",
     "time_occurred": "just now",
     "affected_people_count": None,
     "severity_rating": 4,
@@ -133,3 +133,26 @@ async def test_llamacpp_without_weights_raises_instead_of_mocking():
     provider = get_ai_provider("llamacpp")
     with pytest.raises(ProviderUnavailableError, match="model file not found"):
         await provider.generate("Test fire hazard prompt")
+
+
+def test_detector_separates_confident_objects():
+    """A low-confidence box is still detected but not offered for describing."""
+    from types import SimpleNamespace
+    from ai_pipeline.vision import detector as det
+
+    def box(cls, conf):
+        return SimpleNamespace(cls=[cls], conf=[conf])
+
+    d = det.YOLOv8Detector()
+    d.model = lambda path: [SimpleNamespace(boxes=[box(7, 0.84), box(2, 0.35)])]
+    d.model.names = {2: "car", 7: "truck"}
+    d._load_model = lambda: None
+    import os
+    real_exists = os.path.exists
+    os.path.exists = lambda p: True
+    try:
+        res = d.detect("photo.jpg")
+    finally:
+        os.path.exists = real_exists
+    assert sorted(res["detected_objects"]) == ["car", "truck"]
+    assert res["confident_objects"] == ["truck"]

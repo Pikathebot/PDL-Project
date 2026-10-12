@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `llamaserver` AI provider (llama.cpp `llama-server`, OpenAI-compatible) as the default LLM backend; grammar-enforced JSON extraction with an explicit `model_available` / `parsed` contract.
 - Video evidence is analysed by sampling keyframes through YOLOv8; the best frame is served as the video poster on the dashboard.
 - Standalone mode: `DATABASE_URL` (SQLite) + `AI_PROCESSING_MODE=inline` run the whole stack without Docker, Redis or a Celery worker.
-- `seed_demo.py`: 18 Mumbai incidents with deliberate duplicate groups, pushed through the real pipeline.
+- `seed_demo.py`: 18 Chennai incidents with deliberate duplicate groups, pushed through the real pipeline.
 - `dispatched_at` / `resolved_at` timestamps and average time-to-dispatch / time-to-resolve on the analytics page.
 - `incident_ai_processed` WebSocket event plus a dashboard poll so AI results appear live.
 - PWA icon set and manifest; installable from the dev server with `VITE_PWA_DEV=true`.

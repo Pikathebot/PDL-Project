@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Clock } from 'lucide-react';
 import { formatTime } from '../../utils/datetime';
+import { cardDescription } from '../../utils/description';
 
 export default function IncidentQueue({ incidents = [], selectedIncident, onSelectIncident }) {
   const [filterCategory, setFilterCategory] = useState('all');
@@ -10,7 +11,7 @@ export default function IncidentQueue({ incidents = [], selectedIncident, onSele
     const matchesCategory = filterCategory === 'all' || inc.category === filterCategory;
     const matchesSearch =
       inc.tracking_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inc.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (inc.description || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (inc.location_name && inc.location_name.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
@@ -97,7 +98,7 @@ export default function IncidentQueue({ incidents = [], selectedIncident, onSele
                   {inc.category.replace('_', ' ')}
                 </h4>
                 <p className="text-[11px] text-[var(--text-secondary)] line-clamp-2 mt-1 leading-relaxed">
-                  {inc.description}
+                  {cardDescription(inc)}
                 </p>
 
                 <div className="mt-3 pt-2.5 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px]">

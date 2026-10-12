@@ -22,7 +22,7 @@ $env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m pytest ai_pipeline/tests
 .\.venv\Scripts\python.exe -m uvicorn backend.app.main:app --reload --port 8000
 .\.venv\Scripts\python.exe -m celery -A backend.app.tasks.celery_app.celery_app worker --loglevel=info --pool=solo   # --pool=solo required on Windows
 $env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed          # users + responders only, idempotent
-$env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed_demo     # 18 Mumbai incidents through the real pipeline; --reset to wipe & redo, --no-process to skip AI
+$env:PYTHONPATH="."; .\.venv\Scripts\python.exe -m backend.app.db.seed_demo     # 18 Chennai incidents through the real pipeline; --reset to wipe & redo, --no-process to skip AI
 
 # Frontend (cd frontend)
 npm run dev          # Vite on :5173, proxies /api, /ws, /media_uploads -> :8000

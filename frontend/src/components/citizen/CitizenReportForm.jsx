@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Send, Phone, CheckCircle, Flame, Car, HardHat, Waves, Wind, Zap, Activity, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Send, Phone, CheckCircle, Flame, Car, HardHat, Waves, Wind, Zap, Activity, ShieldAlert, CircleAlert } from 'lucide-react';
 import CameraCapture from './CameraCapture';
 import VoiceRecorder from './VoiceRecorder';
 import LocationPicker from './LocationPicker';
@@ -27,17 +27,20 @@ export default function CitizenReportForm() {
   const [audioFile, setAudioFile] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
+  const [formError, setFormError] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!description) {
-      alert('Please describe the hazard.');
+    // Text is optional with evidence attached: the AI writes the description from it.
+    if (!description.trim() && !mediaFile && !audioFile) {
+      setFormError('Describe the hazard, or attach a photo, video or voice note.');
       return;
     }
     if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) {
-      alert('Please set the incident location — use "Use my location" or enter coordinates.');
+      setFormError('Set the incident location using "Use my location" or by entering coordinates.');
       return;
     }
+    setFormError(null);
     setSubmitting(true);
 
     try {
@@ -54,7 +57,7 @@ export default function CitizenReportForm() {
       const res = await submitIncidentReport(formData);
       setResult(res);
     } catch (err) {
-      alert('Error submitting report. Please try again.');
+      setFormError('Could not submit the report. Check your connection and try again.');
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +125,7 @@ export default function CitizenReportForm() {
           rows={3}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="Describe what happened, injuries, or immediate risks..."
+          placeholder="Describe what happened, injuries, or immediate risks... (optional with a photo, video or voice note)"
           className="w-full theme-input rounded-2xl p-3.5 text-sm font-medium focus:border-sky-500 focus:outline-none"
         />
       </div>
@@ -147,10 +150,17 @@ export default function CitizenReportForm() {
         />
       </div>
 
+      {formError && (
+        <p role="alert" className="flex items-start gap-2 text-xs font-semibold text-red-400">
+          <CircleAlert className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>{formError}</span>
+        </p>
+      )}
+
       <button
         type="submit"
         disabled={submitting}
-        className="w-full py-4 bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-extrabold rounded-2xl shadow-lg shadow-sky-500/25 hover:opacity-95 transition flex items-center justify-center space-x-2 text-base tracking-wider uppercase"
+        className="w-full py-4 bg-gradient-to-r from-sky-500 to-blue-600 text-slate-950 font-extrabold rounded-2xl shadow-lg shadow-sky-500/25 hover:opacity-95 transition flex items-center justify-center space-x-2 text-base tracking-wider uppercase disabled:opacity-60"
       >
         <Send className="w-5 h-5" />
         <span>{submitting ? 'Transmitting to AI Pipeline...' : 'Submit Emergency Report'}</span>

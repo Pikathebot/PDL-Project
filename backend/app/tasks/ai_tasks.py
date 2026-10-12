@@ -54,6 +54,7 @@ async def _process_incident(incident_id: int, session: AsyncSession):
     # a .webm to YOLOv8.
     provenance = {"vision": "unavailable", "exif": "unavailable", "transcription": "not_applicable"}
     transcripts = []
+    detected = []  # labels the detector is confident it saw (see DESCRIBE_MIN_CONFIDENCE), for a description written from evidence
     vision_done = False
 
     for attachment in incident.media_attachments:
@@ -73,7 +74,10 @@ async def _process_incident(incident_id: int, session: AsyncSession):
             # Only the first visual attachment drives classification and severity.
             if not vision_done:
                 vision_done = True
-                _apply_vision(incident, yolo_detector.detect(media_path), provenance, "yolov8")
+                vision_res = yolo_detector.detect(media_path)
+                _apply_vision(incident, vision_res, provenance, "yolov8")
+                if vision_res.get("model_available"):
+                    detected += vision_res.get("confident_objects") or []
 
         elif attachment.media_type == MediaType.AUDIO:
             transcription = whisper_transcriber.transcribe(media_path)
@@ -98,12 +102,19 @@ async def _process_incident(incident_id: int, session: AsyncSession):
             if not vision_done:
                 vision_done = True
                 _apply_vision(incident, video_res, provenance, "yolov8-keyframes")
+                if video_res.get("model_available"):
+                    detected += video_res.get("confident_objects") or []
 
     # A real transcript is genuine reported content, so it joins the text used
     # for extraction and embedding. An absent one contributes nothing.
-    analysis_text = incident.description
-    if transcripts:
-        analysis_text = " ".join([incident.description] + transcripts)
+    citizen_text = (incident.description or "").strip()
+    analysis_text = " ".join([citizen_text] + transcripts).strip()
+    # Media-only report: the citizen wrote nothing, so the model reads a
+    # plain statement of the evidence instead, and its summary becomes the
+    # description (flagged as AI-written below, never passed off as theirs).
+    describe = not citizen_text
+    if describe:
+        analysis_text = _evidence_text(incident, sorted(set(detected)), transcripts)
 
     # 2. LLM Extraction. The provider always returns `model_available` and
     # `parsed`; when a real model parsed cleanly and vision had no opinion, its
@@ -117,6 +128,15 @@ async def _process_incident(incident_id: int, session: AsyncSession):
         if isinstance(rating, int) and 1 <= rating <= 5:
             incident.severity = rating
             provenance["severity_source"] = "llm"
+
+    if describe:
+        summary = extracted_details.get("summary") if llm_ran and extracted_details.get("parsed") else None
+        if isinstance(summary, str) and summary.strip():
+            incident.description = summary.strip()
+            provenance["description"] = "llm"
+        else:
+            incident.description = _fallback_description(incident, sorted(set(detected)), transcripts)
+            provenance["description"] = "template"
 
     # 3. Vector Embedding. Provenance travels with the vector: dedup must know
     # whether this came from a real model or the offline hash fallback.
@@ -163,6 +183,37 @@ async def _process_incident(incident_id: int, session: AsyncSession):
         "cluster_id": incident.cluster_id,
         "ai_provenance": provenance,
     })
+
+
+def _category_label(incident: Incident) -> str:
+    return getattr(incident.category, "value", str(incident.category)).replace("_", " ")
+
+
+def _evidence_text(incident: Incident, objects: list, transcripts: list) -> str:
+    """What the model may describe when the citizen wrote nothing: facts only."""
+    parts = [f"No written description was given. The citizen chose the category '{_category_label(incident)}'."]
+    if incident.location_name:
+        parts.append(f"Location given: {incident.location_name}.")
+    if objects:
+        parts.append(f"An object detector confidently saw these in the attached photo or video: {', '.join(objects)}. "
+                     "They were seen in the scene; that does not mean each one was involved in the incident.")
+    if transcripts:
+        parts.append(f"The citizen's voice note says: \"{' '.join(transcripts)}\"")
+    if not objects and not transcripts:
+        parts.append("Nothing in the attached media was confidently recognised.")
+    parts.append("Write one factual sentence a dispatcher can act on, using only this evidence. Do not add injuries, "
+                 "causes, numbers or involvement it does not state, and do not mention that details are missing.")
+    return " ".join(parts)
+
+
+def _fallback_description(incident: Incident, objects: list, transcripts: list) -> str:
+    """Used when the language model is unavailable: a plain sentence, no inference."""
+    text = f"{_category_label(incident).capitalize()} reported with media and no written description."
+    if objects:
+        text += f" Detected in the media: {', '.join(objects)}."
+    if transcripts:
+        text += f" Voice note: \"{' '.join(transcripts)}\""
+    return text
 
 
 def _apply_vision(incident: Incident, result: dict, provenance: dict, source: str) -> None:

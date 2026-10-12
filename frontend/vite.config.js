@@ -53,6 +53,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Allows the cloudflared quick-tunnel hostname (random per run) through
+    // Vite's dev-server host check when sharing a showcase link.
+    allowedHosts: ['.trycloudflare.com'],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

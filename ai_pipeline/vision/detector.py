@@ -4,6 +4,11 @@ from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
 
+# Detections at or above this are trusted enough to put into words. Below it
+# (a 0.35 "car" that was a scooter at the edge of the frame) they still count
+# for severity, but an AI-written description must not state them as fact.
+DESCRIBE_MIN_CONFIDENCE = 0.5
+
 class YOLOv8Detector:
     """
     YOLOv8 Object Detection and Hazard Severity Estimator.
@@ -32,6 +37,7 @@ class YOLOv8Detector:
             return {
                 "model_available": False,
                 "detected_objects": [],
+                "confident_objects": [],
                 "highest_confidence": None,
                 "estimated_severity": None,
                 "hazard_label": None,
@@ -39,6 +45,7 @@ class YOLOv8Detector:
 
         results = self.model(image_path)
         detected_objects = []
+        confident_objects = set()
         max_conf = 0.0
 
         for r in results:
@@ -46,6 +53,8 @@ class YOLOv8Detector:
                 label = self.model.names[int(box.cls[0])]
                 conf = float(box.conf[0])
                 detected_objects.append(label)
+                if conf >= DESCRIBE_MIN_CONFIDENCE:
+                    confident_objects.add(label)
                 if conf > max_conf:
                     max_conf = conf
 
@@ -58,6 +67,7 @@ class YOLOv8Detector:
         return {
             "model_available": True,
             "detected_objects": list(set(detected_objects)),
+            "confident_objects": sorted(confident_objects),
             "highest_confidence": round(max_conf, 2),
             "estimated_severity": severity,
             "hazard_label": detected_objects[0] if detected_objects else "Unknown",

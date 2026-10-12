@@ -6,9 +6,9 @@ async def test_create_incident_endpoint(client: AsyncClient):
     payload = {
         "category": "road_accident",
         "description": "Minor vehicle collision at junction.",
-        "latitude": "19.0760",
-        "longitude": "72.8777",
-        "location_name": "Bandra Kurla Complex",
+        "latitude": "13.0760",
+        "longitude": "80.2777",
+        "location_name": "Chennai Central",
         "phone_number": "+919876543210"
     }
     response = await client.post("/api/v1/incidents/", data=payload)
@@ -42,8 +42,8 @@ async def test_nearest_responders_and_dispatch(client: AsyncClient, db):
         user_id=user.id,
         department="Police Traffic Branch",
         status=ResponderStatus.AVAILABLE,
-        latitude=19.0770,
-        longitude=72.8780
+        latitude=13.0770,
+        longitude=80.2780
     )
     db.add(responder)
     await db.commit()
@@ -52,8 +52,8 @@ async def test_nearest_responders_and_dispatch(client: AsyncClient, db):
     payload = {
         "category": "road_accident",
         "description": "Collision near BKC.",
-        "latitude": "19.0760",
-        "longitude": "72.8777"
+        "latitude": "13.0760",
+        "longitude": "80.2777"
     }
     create_res = await client.post("/api/v1/incidents/", data=payload)
     inc_data = create_res.json()
@@ -103,3 +103,15 @@ async def test_inline_mode_schedules_pipeline_as_background_task(client, monkeyp
     assert res.status_code == 201
     # BackgroundTasks run after the response inside the ASGI transport call.
     assert processed == [res.json()["id"]]
+
+
+@pytest.mark.asyncio
+async def test_blank_description_needs_media(client: AsyncClient):
+    payload = {"category": "fire", "description": "   ", "latitude": "13.04", "longitude": "80.23"}
+    response = await client.post("/api/v1/incidents/", data=payload)
+    assert response.status_code == 422
+
+    response = await client.post("/api/v1/incidents/", data=payload,
+                                 files={"files": ("scene.jpg", b"\xff\xd8\xff\xd9", "image/jpeg")})
+    assert response.status_code == 201
+    assert response.json()["description"] == ""

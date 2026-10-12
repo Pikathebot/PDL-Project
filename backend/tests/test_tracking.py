@@ -8,8 +8,8 @@ async def _create(client: AsyncClient, description: str = "Live wire down on the
         data={
             "category": "electrical_hazard",
             "description": description,
-            "latitude": "19.0760",
-            "longitude": "72.8777",
+            "latitude": "13.0760",
+            "longitude": "80.2777",
             "phone_number": "+919812345678",
         },
     )
@@ -93,7 +93,7 @@ async def test_turnstile_disabled_by_default_lets_reports_through(client: AsyncC
     response = await client.post(
         "/api/v1/incidents/",
         data={"category": "fire", "description": "Smoke from a shop.",
-              "latitude": "19.0760", "longitude": "72.8777"},
+              "latitude": "13.0760", "longitude": "80.2777"},
     )
     assert response.status_code == 201
 
@@ -112,6 +112,6 @@ async def test_turnstile_rejects_a_missing_token_once_configured(client: AsyncCl
     response = await client.post(
         "/api/v1/incidents/",
         data={"category": "fire", "description": "Smoke from a shop.",
-              "latitude": "19.0760", "longitude": "72.8777"},
+              "latitude": "13.0760", "longitude": "80.2777"},
     )
     assert response.status_code == 403

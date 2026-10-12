@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Navigation } from 'lucide-react';
+import { MapPin, Navigation, CircleAlert } from 'lucide-react';
 
 export default function LocationPicker({ onLocationChange }) {
   // Deliberately empty. These fields used to be pre-filled with a real Mumbai
@@ -10,6 +10,7 @@ export default function LocationPicker({ onLocationChange }) {
   const [coords, setCoords] = useState({ lat: '', lng: '' });
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const [locationError, setLocationError] = useState(null);
 
   useEffect(() => {
     const lat = parseFloat(coords.lat);
@@ -23,9 +24,10 @@ export default function LocationPicker({ onLocationChange }) {
 
   const detectLocation = () => {
     if (!navigator.geolocation) {
-      alert('Geolocation not supported by your browser');
+      setLocationError('Geolocation is not supported by your browser.');
       return;
     }
+    setLocationError(null);
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -35,9 +37,14 @@ export default function LocationPicker({ onLocationChange }) {
         setLoading(false);
       },
       () => {
-        alert('Could not detect location automatically. Please enter location manually.');
+        setLocationError('Could not detect location automatically. Enter it manually below.');
         setLoading(false);
-      }
+      },
+      // getCurrentPosition's default timeout is Infinity, so without one, a
+      // stalled GPS/WiFi fix (location services off, no signal, a silently
+      // dismissed permission prompt) leaves the button stuck on "Locking
+      // GPS..." forever instead of falling back to the error handler.
+      { timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -56,6 +63,13 @@ export default function LocationPicker({ onLocationChange }) {
           <span>{loading ? 'Locking GPS...' : 'Use my location'}</span>
         </button>
       </div>
+
+      {locationError && (
+        <p role="alert" className="flex items-start gap-1.5 text-[11px] font-semibold text-red-400">
+          <CircleAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{locationError}</span>
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div>

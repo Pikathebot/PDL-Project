@@ -1,0 +1,260 @@
+1
+00:00:00,350 --> 00:00:01,397
+Hello everyone.
+
+2
+00:00:01,397 --> 00:00:07,258
+We are presenting Sentinel, an AI powered citizen incident reporting and intelligent
+
+3
+00:00:07,258 --> 00:00:09,073
+emergency dispatch system.
+
+4
+00:00:09,073 --> 00:00:15,283
+It was developed by Latheshkumar, Madesh, Jeffrin and Kamalesh Balaji, under the guidance
+
+5
+00:00:15,283 --> 00:00:15,702
+of Ms.
+
+6
+00:00:15,702 --> 00:00:19,330
+Sumitha T, for the Product Development Lab at R.M.K.
+
+7
+00:00:19,330 --> 00:00:20,726
+Engineering College.
+
+8
+00:00:21,683 --> 00:00:27,840
+Today, when a citizen in Chennai sees a fire, an accident or a flooded road, the only
+
+9
+00:00:27,840 --> 00:00:31,099
+option is to call a helpline and describe it.
+
+10
+00:00:31,099 --> 00:00:33,924
+A phone call carries no photo or video.
+
+11
+00:00:33,924 --> 00:00:36,314
+The location is a vague landmark.
+
+12
+00:00:36,314 --> 00:00:40,371
+One visible incident triggers dozens of duplicate calls.
+
+13
+00:00:40,371 --> 00:00:45,875
+And calls are handled in the order they arrive, not by how serious they are.
+
+14
+00:00:46,850 --> 00:00:49,657
+Sentinel fixes this in three steps.
+
+15
+00:00:49,657 --> 00:00:54,148
+Citizens report with evidence and an exact GPS location.
+
+16
+00:00:54,148 --> 00:01:00,563
+An AI pipeline verifies, summarises, de-duplicates and prioritises every report.
+
+17
+00:01:00,563 --> 00:01:06,578
+And dispatchers see a live map and send the nearest responder in one click.
+
+18
+00:01:07,528 --> 00:01:09,592
+The system has four tiers.
+
+19
+00:01:09,592 --> 00:01:14,118
+A React progressive web app for citizens and dispatchers.
+
+20
+00:01:14,118 --> 00:01:19,119
+A FastAPI backend with secure login and live WebSocket updates.
+
+21
+00:01:19,119 --> 00:01:21,501
+PostgreSQL and Redis for data.
+
+22
+00:01:21,501 --> 00:01:26,344
+And an AI worker that runs every report through the pipeline.
+
+23
+00:01:27,295 --> 00:01:33,490
+The pipeline runs YOLO version 8 on photos and video frames, checks the photo's EXIF data
+
+24
+00:01:33,490 --> 00:01:38,503
+against the reported location, and transcribes voice notes with Whisper.
+
+25
+00:01:38,503 --> 00:01:44,559
+A Qwen 3.5 language model, running locally through llama dot c p p, extracts the hazard
+
+26
+00:01:44,559 --> 00:01:46,578
+type, severity and a summary.
+
+27
+00:01:46,578 --> 00:01:52,565
+Sentence embeddings and a Union Find algorithm merge duplicate reports, and a weighted
+
+28
+00:01:52,565 --> 00:01:54,236
+score sets the priority.
+
+29
+00:01:54,236 --> 00:01:59,527
+If any model is missing, Sentinel records that honestly instead of guessing.
+
+30
+00:02:00,495 --> 00:02:02,163
+Let us see it working.
+
+31
+00:02:02,163 --> 00:02:08,761
+A citizen opens Sentinel on their phone, chooses Road Accident, and describes what they
+
+32
+00:02:08,761 --> 00:02:10,733
+see at Kathipara junction.
+
+33
+00:02:10,733 --> 00:02:16,951
+They attach a photo, and tap Use my location to fill in the exact GPS coordinates.
+
+34
+00:02:16,951 --> 00:02:18,999
+One tap submits the report.
+
+35
+00:02:19,695 --> 00:02:24,663
+The report is saved instantly and the citizen receives a tracking ID.
+
+36
+00:02:24,663 --> 00:02:29,631
+In the background, the AI pipeline has already started working on it.
+
+37
+00:02:30,195 --> 00:02:35,521
+With the tracking ID, the citizen can follow the report through seven stages, from
+
+38
+00:02:35,521 --> 00:02:39,939
+Reported, through AI Processing and Verified, all the way to Closed.
+
+39
+00:02:41,095 --> 00:02:43,004
+Now the dispatcher signs in.
+
+40
+00:02:43,004 --> 00:02:48,800
+The dashboard shows every active incident across Chennai, from Ennore in the north to
+
+41
+00:02:48,800 --> 00:02:50,301
+Tambaram in the south.
+
+42
+00:02:50,301 --> 00:02:56,370
+The cards at the top show incidents by severity, available units, and duplicate clusters.
+
+43
+00:02:56,370 --> 00:03:02,370
+The heat map highlights where incidents are concentrated, and the live feed on the right
+
+44
+00:03:02,370 --> 00:03:03,871
+is sorted by priority.
+
+45
+00:03:04,428 --> 00:03:06,876
+Here is the report we just submitted.
+
+46
+00:03:06,876 --> 00:03:12,433
+YOLO detected the bus and the people in the photo, and the language model turned the
+
+47
+00:03:12,433 --> 00:03:18,255
+citizen's words into a structured record: a road accident at Kathipara junction, needing
+
+48
+00:03:18,255 --> 00:03:21,364
+an immediate response, with a one line summary.
+
+49
+00:03:21,364 --> 00:03:24,804
+The provenance block shows exactly which models ran.
+
+50
+00:03:25,498 --> 00:03:28,758
+This transformer fire on Ranganathan Street in T.
+
+51
+00:03:28,758 --> 00:03:32,150
+Nagar was reported three times by different people.
+
+52
+00:03:32,150 --> 00:03:36,940
+Sentinel merged the reports into one cluster, which raised its priority.
+
+53
+00:03:36,940 --> 00:03:41,729
+The k d tree lists the nearest available responders with their distance.
+
+54
+00:03:41,729 --> 00:03:47,516
+Officer Priya Nair from Fire and Rescue is only a hundred and fifty metres away, so the
+
+55
+00:03:47,516 --> 00:03:52,306
+dispatcher sends her with one click, and the status moves to Dispatched.
+
+56
+00:03:52,865 --> 00:03:58,451
+The analytics page shows the category and status breakdown, available units, duplicate
+
+57
+00:03:58,451 --> 00:04:04,297
+clusters, and the average time to dispatch and to resolve, so the control room can measure
+
+58
+00:04:04,297 --> 00:04:05,921
+and improve its response.
+
+59
+00:04:07,231 --> 00:04:12,716
+On our Chennai dataset of eighteen reports, all three duplicate groups were merged
+
+60
+00:04:12,716 --> 00:04:18,401
+correctly, and each report was triaged in about seven seconds on a single laptop GPU.
+
+61
+00:04:18,401 --> 00:04:23,551
+The project has one hundred and eleven automated tests, and all of them pass.
+
+62
+00:04:24,501 --> 00:04:30,133
+In the future, Sentinel can be connected to the 112 emergency response system, support
+
+63
+00:04:30,133 --> 00:04:36,027
+Tamil and other languages, and add a responder mobile app and flood hotspot prediction for
+
+64
+00:04:36,027 --> 00:04:36,813
+the monsoon.
+
+65
+00:04:37,768 --> 00:04:39,736
+Thank you for watching.
+

@@ -1,0 +1,195 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+  body { background:#fff; margin:0; font-family: "Times New Roman", serif; }
+  .d { display:inline-block; padding:24px; background:#fff; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+</head><body>
+
+<div class="d" id="fig1_1"><pre class="mermaid">
+flowchart TB
+  D["<b>Public Safety &amp; Emergency Management</b>"]
+  D --> A["Crowdsourced Incident Reporting<br/>(Citizen PWA)"]
+  D --> B["Computer Vision<br/>(YOLOv8 object detection)"]
+  D --> C["Natural Language Processing<br/>(LLM extraction, Whisper ASR)"]
+  D --> E["Geospatial Computing<br/>(GPS, Haversine, k-d tree)"]
+  D --> F["Decision Support<br/>(priority scoring, dedup)"]
+  D --> G["Real-time Systems<br/>(WebSocket dispatch)"]
+  A & B & C & E & F & G --> S(["SENTINEL<br/>AI-assisted Emergency Dispatch"])
+  classDef root fill:#0b3d91,color:#fff,stroke:#0b3d91;
+  classDef sub fill:#e8f0fe,stroke:#0b3d91,color:#000;
+  classDef out fill:#d1fae5,stroke:#047857,color:#000;
+  class D root; class A,B,C,E,F,G sub; class S out;
+</pre></div>
+
+<div class="d" id="fig5_1"><pre class="mermaid">
+flowchart TB
+  subgraph FE["Presentation Layer: React 18 + Vite PWA"]
+    direction LR
+    F1[Citizen Report Form] ~~~ F2[Track Status] ~~~ F3[Dispatcher Dashboard] ~~~ F4[Leaflet Map] ~~~ F5[Analytics]
+  end
+  subgraph BE["Application Layer: FastAPI"]
+    direction LR
+    B1[REST API /api/v1] ~~~ B2[JWT Auth] ~~~ B3[WebSocket Manager] ~~~ B4[Storage Service] ~~~ B5[Union-Find / Heap PQ / k-d Tree]
+  end
+  subgraph AI["Intelligence Layer: AI Pipeline"]
+    direction LR
+    A1[YOLOv8 Detector] ~~~ A2[EXIF Verifier] ~~~ A3[Whisper ASR] ~~~ A4[LLM Extractor] ~~~ A5[Sentence Embeddings]
+  end
+  subgraph DB["Data Layer"]
+    direction LR
+    D1[(PostgreSQL + PostGIS / SQLite)] ~~~ D2[(Redis)] ~~~ D3[(Media Store)]
+  end
+  FE <--> BE
+  BE <--> AI
+  BE <--> DB
+  classDef g fill:#f8fafc,stroke:#334155;
+  class FE,BE,AI,DB g;
+</pre></div>
+
+<div class="d" id="fig6_1"><svg xmlns="http://www.w3.org/2000/svg" width="1500" height="790" font-family="Arial, sans-serif">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker>
+<marker id="a2" markerWidth="10" markerHeight="10" refX="1" refY="5" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#334155"/></marker></defs>
+<rect x="20" y="20" width="1460" height="130" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4"/><text x="40" y="46" font-size="17" font-weight="bold" fill="#0b3d91">CLIENT TIER</text><rect x="110" y="55" width="380" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="300.0" y="86.0" text-anchor="middle" font-size="16">Citizen PWA</text><text x="300.0" y="106.0" text-anchor="middle" font-size="16">(report form, track status)</text><rect x="1010" y="55" width="380" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="1200.0" y="86.0" text-anchor="middle" font-size="16">Dispatcher Dashboard</text><text x="1200.0" y="106.0" text-anchor="middle" font-size="16">(map, priority queue, analytics)</text><rect x="20" y="200" width="1460" height="150" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4"/><text x="40" y="226" font-size="17" font-weight="bold" fill="#0b3d91">APPLICATION TIER  (FastAPI)</text><rect x="60" y="250" width="330" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="225.0" y="281.0" text-anchor="middle" font-size="16">REST API /api/v1</text><text x="225.0" y="301.0" text-anchor="middle" font-size="16">+ JWT authentication</text><rect x="410" y="250" width="330" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="575.0" y="281.0" text-anchor="middle" font-size="16">WebSocket Manager</text><text x="575.0" y="301.0" text-anchor="middle" font-size="16">/ws/incidents</text><rect x="760" y="250" width="330" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="925.0" y="281.0" text-anchor="middle" font-size="16">k-d Tree</text><text x="925.0" y="301.0" text-anchor="middle" font-size="16">nearest responder</text><rect x="1110" y="250" width="330" height="70" rx="8" fill="#e8f0fe" stroke="#0b3d91" stroke-width="2"/><text x="1275.0" y="281.0" text-anchor="middle" font-size="16">Storage Service</text><text x="1275.0" y="301.0" text-anchor="middle" font-size="16">media_uploads/</text><rect x="20" y="400" width="1460" height="140" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4"/><text x="40" y="426" font-size="17" font-weight="bold" fill="#0b3d91">DATA TIER</text><rect x="100" y="445" width="300" height="70" rx="8" fill="#d1fae5" stroke="#047857" stroke-width="2"/><text x="250.0" y="476.0" text-anchor="middle" font-size="16">PostgreSQL + PostGIS</text><text x="250.0" y="496.0" text-anchor="middle" font-size="16">(SQLite in standalone mode)</text><rect x="600" y="445" width="300" height="70" rx="8" fill="#d1fae5" stroke="#047857" stroke-width="2"/><text x="750.0" y="476.0" text-anchor="middle" font-size="16">Redis</text><text x="750.0" y="496.0" text-anchor="middle" font-size="16">(task broker)</text><rect x="1100" y="445" width="300" height="70" rx="8" fill="#d1fae5" stroke="#047857" stroke-width="2"/><text x="1250.0" y="476.0" text-anchor="middle" font-size="16">Media Store</text><text x="1250.0" y="496.0" text-anchor="middle" font-size="16">(images, video, audio)</text><rect x="20" y="600" width="1460" height="170" rx="12" fill="#f8fafc" stroke="#334155" stroke-width="1.5" stroke-dasharray="6 4"/><text x="40" y="626" font-size="17" font-weight="bold" fill="#0b3d91">AI PROCESSING TIER  (Celery worker / inline background task)</text><rect x="40.0" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="125.0" y="698.5" text-anchor="middle" font-size="16">YOLOv8</text><text x="125.0" y="718.5" text-anchor="middle" font-size="16">+ keyframes</text><line x1="210.0" y1="702" x2="246.33333333333334" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="248.33333333333334" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="333.33333333333337" y="698.5" text-anchor="middle" font-size="16">EXIF</text><text x="333.33333333333337" y="718.5" text-anchor="middle" font-size="16">verification</text><line x1="418.33333333333337" y1="702" x2="454.6666666666667" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="456.6666666666667" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="541.6666666666667" y="698.5" text-anchor="middle" font-size="16">Whisper</text><text x="541.6666666666667" y="718.5" text-anchor="middle" font-size="16">transcript</text><line x1="626.6666666666667" y1="702" x2="663.0000000000001" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="665.0" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="750.0" y="698.5" text-anchor="middle" font-size="16">LLM extraction</text><text x="750.0" y="718.5" text-anchor="middle" font-size="16">Qwen3.5</text><line x1="835.0" y1="702" x2="871.3333333333334" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="873.3333333333334" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="958.3333333333334" y="698.5" text-anchor="middle" font-size="16">Sentence</text><text x="958.3333333333334" y="718.5" text-anchor="middle" font-size="16">embedding</text><line x1="1043.3333333333335" y1="702" x2="1079.6666666666667" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="1081.6666666666667" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="1166.6666666666667" y="698.5" text-anchor="middle" font-size="16">Union-Find</text><text x="1166.6666666666667" y="718.5" text-anchor="middle" font-size="16">dedup</text><line x1="1251.6666666666667" y1="702" x2="1288.0" y2="702" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><rect x="1290.0" y="665" width="170" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/><text x="1375.0" y="698.5" text-anchor="middle" font-size="16">Priority</text><text x="1375.0" y="718.5" text-anchor="middle" font-size="16">score</text><line x1="300" y1="125" x2="225" y2="248" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="275" y="190" font-size="15" font-style="italic" fill="#334155">report: text, media, GPS</text><line x1="1150" y1="127" x2="330" y2="248" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" marker-start="url(#a2)"/><text x="650" y="185" font-size="15" font-style="italic" fill="#334155">REST (JWT)</text><line x1="575" y1="250" x2="1120" y2="127" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="860" y="222" font-size="15" font-style="italic" fill="#334155">live events</text><line x1="925" y1="250" x2="1220" y2="127" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><line x1="200" y1="320" x2="200" y2="443" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="210" y="390" font-size="15" font-style="italic" fill="#334155">read / write</text><line x1="380" y1="320" x2="640" y2="443" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="520" y="375" font-size="15" font-style="italic" fill="#334155">process_incident_ai</text><line x1="1275" y1="320" x2="1250" y2="443" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><line x1="750" y1="515" x2="750" y2="663" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="760" y="595" font-size="15" font-style="italic" fill="#334155">task</text><line x1="250" y1="663" x2="250" y2="517" stroke="#334155" stroke-width="2.5" marker-end="url(#a)" /><text x="260" y="595" font-size="15" font-style="italic" fill="#334155">VERIFIED, cluster, priority</text></svg></div>
+
+<div class="d" id="fig6_2"><pre class="mermaid">
+flowchart LR
+  CIT[/"Citizen"/] -->|"incident details, media, GPS"| P1(("1.0<br/>Receive &amp;<br/>Validate Report"))
+  P1 -->|"incident record"| D1[("D1 Incidents")]
+  P1 -->|"media files"| D2[("D2 Media Store")]
+  P1 -->|"tracking ID"| CIT
+  D2 -->|"image / video / audio"| P2(("2.0<br/>AI Media<br/>Analysis"))
+  P2 -->|"detections, EXIF,<br/>transcript"| P3(("3.0<br/>LLM Extraction<br/>&amp; Embedding"))
+  D1 -->|"description"| P3
+  P3 -->|"structured details,<br/>vector"| P4(("4.0<br/>De-duplicate &amp;<br/>Prioritise"))
+  D1 -->|"recent verified incidents"| P4
+  P4 -->|"cluster, priority, VERIFIED"| D1
+  D1 -->|"priority queue"| P5(("5.0<br/>Dispatch<br/>Management"))
+  D3[("D3 Responders")] -->|"locations"| P5
+  P5 -->|"assignment, status"| D1
+  P5 <-->|"live feed, actions"| DIS[/"Dispatcher"/]
+  P5 -->|"assignment"| RES[/"Responder"/]
+  D1 -->|"status"| P6(("6.0<br/>Track Status"))
+  P6 -->|"progress"| CIT
+</pre></div>
+
+<div class="d" id="fig6_3_1"><svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1000" font-family="Arial, sans-serif">
+<defs><marker id="ah" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#334155"/></marker></defs>
+<rect x="380" y="60" width="440" height="915" fill="none" stroke="#000" stroke-width="2"/>
+<text x="600" y="90" text-anchor="middle" font-size="20" font-weight="bold">Sentinel System</text>
+<line x1="175" y1="230" x2="435" y2="130" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="230" x2="435" y2="195" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="230" x2="435" y2="260" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="230" x2="435" y2="325" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="400" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="465" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="530" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="595" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="660" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="725" stroke="#334155" stroke-width="1.5"/><line x1="175" y1="640" x2="435" y2="790" stroke="#334155" stroke-width="1.5"/><line x1="1025" y1="470" x2="765" y2="400" stroke="#334155" stroke-width="1.5"/><line x1="1025" y1="470" x2="765" y2="790" stroke="#334155" stroke-width="1.5"/><line x1="1025" y1="850" x2="765" y2="865" stroke="#334155" stroke-width="1.5"/><line x1="1025" y1="850" x2="765" y2="930" stroke="#334155" stroke-width="1.5"/><path d="M765,130 C 860,300 860,700 765,865" fill="none" stroke="#334155" stroke-dasharray="6 5" stroke-width="1.5" marker-end="url(#ah)"/><text x="850" y="500" font-size="15" font-style="italic">«include»</text><ellipse cx="600" cy="130" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="136" text-anchor="middle" font-size="16">Submit incident report</text><ellipse cx="600" cy="195" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="201" text-anchor="middle" font-size="16">Attach photo / video / voice</text><ellipse cx="600" cy="260" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="266" text-anchor="middle" font-size="16">Share GPS location</text><ellipse cx="600" cy="325" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="331" text-anchor="middle" font-size="16">Track report status</text><ellipse cx="600" cy="400" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="406" text-anchor="middle" font-size="16">Login</text><ellipse cx="600" cy="465" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="471" text-anchor="middle" font-size="16">View live map &amp; queue</text><ellipse cx="600" cy="530" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="536" text-anchor="middle" font-size="16">View AI-extracted details</text><ellipse cx="600" cy="595" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="601" text-anchor="middle" font-size="16">Find nearest responders</text><ellipse cx="600" cy="660" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="666" text-anchor="middle" font-size="16">Dispatch responder</text><ellipse cx="600" cy="725" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="731" text-anchor="middle" font-size="16">Update incident status</text><ellipse cx="600" cy="790" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="796" text-anchor="middle" font-size="16">View analytics</text><ellipse cx="600" cy="865" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="871" text-anchor="middle" font-size="16">Analyse media &amp; text</text><ellipse cx="600" cy="930" rx="165" ry="27" fill="#eef4ff" stroke="#0b3d91" stroke-width="2"/><text x="600" y="936" text-anchor="middle" font-size="16">Detect duplicates &amp; prioritise</text>
+<g transform="translate(150,170)" stroke="#000" stroke-width="2" fill="none"><circle cx="0" cy="0" r="14"/><line x1="0" y1="14" x2="0" y2="55"/><line x1="-25" y1="30" x2="25" y2="30"/><line x1="0" y1="55" x2="-20" y2="85"/><line x1="0" y1="55" x2="20" y2="85"/></g><text x="150" y="280" text-anchor="middle" font-size="18" font-weight="bold">Citizen</text><g transform="translate(150,580)" stroke="#000" stroke-width="2" fill="none"><circle cx="0" cy="0" r="14"/><line x1="0" y1="14" x2="0" y2="55"/><line x1="-25" y1="30" x2="25" y2="30"/><line x1="0" y1="55" x2="-20" y2="85"/><line x1="0" y1="55" x2="20" y2="85"/></g><text x="150" y="690" text-anchor="middle" font-size="18" font-weight="bold">Dispatcher</text><g transform="translate(1050,410)" stroke="#000" stroke-width="2" fill="none"><circle cx="0" cy="0" r="14"/><line x1="0" y1="14" x2="0" y2="55"/><line x1="-25" y1="30" x2="25" y2="30"/><line x1="0" y1="55" x2="-20" y2="85"/><line x1="0" y1="55" x2="20" y2="85"/></g><text x="1050" y="520" text-anchor="middle" font-size="18" font-weight="bold">Admin</text><g transform="translate(1050,790)" stroke="#000" stroke-width="2" fill="none"><circle cx="0" cy="0" r="14"/><line x1="0" y1="14" x2="0" y2="55"/><line x1="-25" y1="30" x2="25" y2="30"/><line x1="0" y1="55" x2="-20" y2="85"/><line x1="0" y1="55" x2="20" y2="85"/></g><text x="1050" y="900" text-anchor="middle" font-size="18" font-weight="bold">AI Pipeline</text>
+</svg></div>
+
+<div class="d" id="fig6_3_2"><pre class="mermaid">
+classDiagram
+  direction LR
+  class User {
+    +int id
+    +str name
+    +str email
+    +str password_hash
+    +UserRole role
+    +bool is_active
+  }
+  class Responder {
+    +int id
+    +int user_id
+    +ResponderStatus status
+    +float latitude
+    +float longitude
+    +str department
+    +datetime last_active
+  }
+  class Incident {
+    +int id
+    +str tracking_id
+    +IncidentCategory category
+    +str description
+    +float latitude
+    +float longitude
+    +int severity
+    +float priority_score
+    +IncidentStatus status
+    +dict structured_details
+    +dict embedding_json
+    +datetime dispatched_at
+    +datetime resolved_at
+  }
+  class IncidentCluster {
+    +int id
+    +str cluster_code
+    +int corroboration_count
+    +int merged_severity
+  }
+  class MediaAttachment {
+    +int id
+    +str file_path
+    +MediaType media_type
+    +ValidationStatus validation_status
+    +dict exif_data
+  }
+  class AIPipeline {
+    +process_incident(id)
+    -detect_objects(image)
+    -transcribe(audio)
+    -extract_structured(text)
+    -embed(text)
+  }
+  class UnionFind {
+    +find(x)
+    +union(a, b)
+  }
+  class KDTree {
+    +find_nearest(lat, lon)
+    +find_k_nearest(lat, lon, k)
+  }
+  User "1" -- "0..1" Responder
+  Responder "1" -- "0..*" Incident : assigned
+  Incident "1" *-- "0..*" MediaAttachment
+  IncidentCluster "1" o-- "1..*" Incident
+  AIPipeline ..> Incident : updates
+  AIPipeline ..> UnionFind : uses
+  KDTree ..> Responder : indexes
+</pre></div>
+
+<div class="d" id="fig6_3_3"><pre class="mermaid">
+flowchart LR
+  subgraph S1["Citizen reporting and AI triage"]
+    direction TB
+    S((Start)) --> A[Citizen opens Sentinel PWA]
+    A --> B[Select hazard type,<br/>describe incident]
+    B --> C[Attach media and share GPS]
+    C --> D{Valid input?}
+    D -- No --> B
+    D -- Yes --> E[Save report, status = REPORTED,<br/>return tracking ID]
+    E --> F[Broadcast to dashboard<br/>via WebSocket]
+    F --> G[AI pipeline:<br/>YOLO / EXIF / Whisper]
+    G --> H[LLM extraction<br/>and embedding]
+    H --> I{Duplicate within 200 m,<br/>2 h and similar text?}
+    I -- Yes --> J[Merge into cluster,<br/>raise corroboration]
+    I -- No --> K[Keep as single incident]
+    J --> L[Priority score,<br/>status = VERIFIED]
+    K --> L
+  end
+  subgraph S2["Dispatch and resolution"]
+    direction TB
+    M[Dispatcher reviews<br/>queue and map] --> N[k-d tree suggests<br/>nearest responders]
+    N --> O[Dispatch responder,<br/>status = DISPATCHED]
+    O --> P[In progress → Resolved<br/>→ Closed]
+    P --> Q[Citizen sees<br/>updated status]
+    Q --> Z((End))
+  end
+  S1 ==> S2
+  classDef g fill:#f8fafc,stroke:#334155;
+  class S1,S2 g;
+</pre></div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'base', securityLevel: 'loose',
+    themeVariables: { fontFamily: 'Arial, sans-serif', fontSize: '16px', primaryColor: '#e8f0fe',
+      primaryBorderColor: '#0b3d91', lineColor: '#334155', primaryTextColor: '#000' },
+    flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: false }, class: { useMaxWidth: false } });
+</script>
+</body></html>

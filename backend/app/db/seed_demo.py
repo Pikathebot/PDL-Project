@@ -1,5 +1,5 @@
 """
-Seed a realistic showcase dataset: ~18 Mumbai incidents from the last two
+Seed a realistic showcase dataset: ~18 Chennai incidents from the last two
 hours, three of which are deliberate duplicate groups so Union-Find clustering
 visibly merges them, then push every one through the real AI pipeline and
 leave the queue in a believable mix of statuses.
@@ -34,49 +34,49 @@ DEMO_PREFIX = "INC-DEMO"
 # the city so the map and the k-d tree have real work to do.
 C = IncidentCategory
 DEMO_INCIDENTS = [
-    # --- Duplicate group A: transformer fire, Lokhandwala market (3 reports) ---
-    (104, C.FIRE, 4, 19.1412, 72.8290, "Lokhandwala Market, Andheri West",
-     "Transformer box near shop no 12 at Lokhandwala market is on fire, sparks and thick smoke, shops are closing shutters."),
-    (99, C.ELECTRICAL_HAZARD, 3, 19.1416, 72.8294, "Lokhandwala Market",
-     "there is a fire in the electricity box at lokhandwala market, lot of smoke, please send someone"),
-    (91, C.FIRE, 4, 19.1409, 72.8287, "Andheri West, near Lokhandwala",
-     "Electrical fire at the market near Lokhandwala circle. Flames visible from the transformer, people gathering around."),
+    # --- Duplicate group A: transformer fire, Ranganathan Street, T. Nagar (3 reports) ---
+    (104, C.FIRE, 4, 13.0405, 80.2337, "Ranganathan Street, T. Nagar",
+     "Transformer box near the jewellery shops on Ranganathan Street is on fire, sparks and thick smoke, shops are pulling down shutters."),
+    (99, C.ELECTRICAL_HAZARD, 3, 13.0409, 80.2341, "Ranganathan Street",
+     "there is a fire in the transformer box at ranganathan street t nagar, sparks and lot of smoke, shops closing, please send someone"),
+    (91, C.FIRE, 4, 13.0402, 80.2334, "T. Nagar, near Usman Road",
+     "Electrical fire in the market street off Usman Road. Flames visible from the transformer, people gathering around."),
 
-    # --- Duplicate group B: bus vs pedestrians, Dadar TT (2 reports) ---
-    (63, C.ROAD_ACCIDENT, 5, 19.0178, 72.8478, "Dadar TT Circle",
-     "A BEST bus has hit two pedestrians at Dadar TT circle, both are lying on the road and bleeding, traffic completely stopped."),
-    (58, C.MEDICAL_EMERGENCY, 5, 19.0181, 72.8483, "Dadar TT",
-     "bus accident at dadar TT, 2 people injured badly on the road, need ambulance urgently"),
+    # --- Duplicate group B: bus vs pedestrians, Kathipara junction (2 reports) ---
+    (63, C.ROAD_ACCIDENT, 5, 13.0067, 80.2058, "Kathipara Junction, Guindy",
+     "An MTC bus has hit two pedestrians at Kathipara junction, both are lying on the road and bleeding, traffic completely stopped."),
+    (58, C.MEDICAL_EMERGENCY, 5, 13.0070, 80.2062, "Kathipara flyover",
+     "bus accident below kathipara flyover, 2 people injured badly on the road, need ambulance urgently"),
 
-    # --- Duplicate group C: waterlogging, Hindmata (2 reports) ---
-    (41, C.FLOODING, 3, 19.0110, 72.8420, "Hindmata Junction, Dadar",
-     "Knee-deep waterlogging at Hindmata junction after the rain, cars are stalling and the underpass is blocked."),
-    (33, C.FLOODING, 3, 19.0114, 72.8424, "Hindmata underpass",
-     "hindmata flooded again, water till the knees, vehicles stuck in the underpass"),
+    # --- Duplicate group C: waterlogging, Velachery Vijayanagar (2 reports) ---
+    (41, C.FLOODING, 3, 12.9791, 80.2185, "Vijayanagar Bus Stand, Velachery",
+     "Knee-deep waterlogging near Vijayanagar bus stand after the rain, two-wheelers are stalling and the main road is blocked."),
+    (33, C.FLOODING, 3, 12.9795, 80.2189, "Velachery Main Road",
+     "vijayanagar bus stand velachery is waterlogged again after rain, water till the knees, bikes stalling and road blocked"),
 
     # --- Singles, spread across the city ---
-    (110, C.INFRASTRUCTURE_DAMAGE, 2, 19.1197, 72.8464, "Western Express Highway, Goregaon",
-     "Large pothole in the middle lane on WEH near Goregaon, two-wheelers are swerving to avoid it. Been there a week."),
-    (95, C.ROAD_ACCIDENT, 3, 18.9440, 72.8230, "Marine Drive",
-     "Two-car collision near the Marine Drive flyover, no one seriously hurt but one car is blocking a lane."),
-    (84, C.CRIMINAL_ACTIVITY, 3, 19.0596, 72.8295, "Bandra Station West",
-     "Group of men fighting outside Bandra station west exit, one has a knife, shopkeepers are scared."),
-    (77, C.ENVIRONMENTAL_HAZARD, 3, 19.0330, 72.8397, "Mahim Creek",
-     "Strong chemical smell coming from Mahim creek, water looks oily and dead fish are floating."),
-    (70, C.INFRASTRUCTURE_DAMAGE, 4, 18.9750, 72.8258, "Grant Road",
-     "Part of the balcony of an old building on Grant Road has collapsed onto the footpath. Nobody hurt yet but more looks loose."),
-    (52, C.MEDICAL_EMERGENCY, 4, 19.0640, 72.8990, "Kurla LTT",
-     "An elderly man has collapsed on platform 2 at Kurla LTT and is not responding, no medical help here."),
-    (47, C.ELECTRICAL_HAZARD, 3, 19.1075, 72.8263, "Juhu Tara Road",
-     "Live wire hanging from a pole at head height on Juhu Tara road, near the bus stop. Kids walk here."),
-    (28, C.FIRE, 2, 18.9388, 72.8354, "Crawford Market",
-     "Small garbage fire behind Crawford market, mostly smoke, but it is close to a stack of cardboard."),
-    (19, C.ROAD_ACCIDENT, 4, 19.2183, 72.9781, "Ghodbunder Road, Thane",
-     "Tanker overturned on Ghodbunder road, something is leaking from it, traffic backed up for a kilometre."),
-    (11, C.FLOODING, 2, 19.0896, 72.8656, "Santacruz East",
-     "Drain overflowing on the main road in Santacruz east, ankle-deep water on the footpath."),
-    (4, C.CRIMINAL_ACTIVITY, 2, 19.0176, 72.8562, "Sion Circle",
-     "Someone is breaking into parked cars at Sion circle, saw him smash a window."),
+    (110, C.INFRASTRUCTURE_DAMAGE, 2, 12.9010, 80.2279, "OMR, Sholinganallur",
+     "Large pothole in the middle lane on OMR near Sholinganallur signal, two-wheelers are swerving to avoid it. Been there a week."),
+    (95, C.ROAD_ACCIDENT, 3, 13.0500, 80.2824, "Kamarajar Salai, Marina Beach",
+     "Two-car collision on Kamarajar Salai opposite Marina beach, no one seriously hurt but one car is blocking a lane."),
+    (84, C.CRIMINAL_ACTIVITY, 3, 13.0694, 80.1948, "Koyambedu Bus Terminus",
+     "Group of men fighting near the Koyambedu bus terminus entrance, one has a knife, shopkeepers are scared."),
+    (77, C.ENVIRONMENTAL_HAZARD, 3, 13.2167, 80.3167, "Ennore Creek",
+     "Strong oil smell coming from Ennore creek, water looks black and oily and dead fish are floating."),
+    (70, C.INFRASTRUCTURE_DAMAGE, 4, 13.0900, 80.2880, "Parrys Corner, George Town",
+     "Part of the balcony of an old building near Parrys corner has collapsed onto the footpath. Nobody hurt yet but more looks loose."),
+    (52, C.MEDICAL_EMERGENCY, 4, 13.0827, 80.2757, "Chennai Central Station",
+     "An elderly man has collapsed on platform 5 at Chennai Central and is not responding, no medical help here."),
+    (47, C.ELECTRICAL_HAZARD, 3, 13.0012, 80.2565, "LB Road, Adyar",
+     "Live wire hanging from a pole at head height on LB Road Adyar, near the bus stop. School kids walk here."),
+    (28, C.FIRE, 2, 13.0339, 80.2697, "Mylapore Tank",
+     "Small garbage fire behind the shops near Mylapore tank, mostly smoke, but it is close to a stack of cardboard."),
+    (19, C.ROAD_ACCIDENT, 4, 12.9249, 80.1000, "GST Road, Tambaram",
+     "Tanker overturned on GST road near Tambaram, something is leaking from it, traffic backed up for a kilometre."),
+    (11, C.FLOODING, 2, 13.0878, 80.2101, "Anna Nagar 2nd Avenue",
+     "Drain overflowing on 2nd Avenue Anna Nagar, ankle-deep water on the footpath."),
+    (4, C.CRIMINAL_ACTIVITY, 2, 13.0533, 80.2640, "Royapettah High Road",
+     "Someone is breaking into parked cars on Royapettah high road, saw him smash a window."),
 ]
 
 

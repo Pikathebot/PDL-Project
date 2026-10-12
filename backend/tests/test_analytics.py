@@ -9,8 +9,8 @@ async def test_heatmap_endpoint(client: AsyncClient):
     payload = {
         "category": "flooding",
         "description": "Subway flooding at Station 4.",
-        "latitude": "19.0760",
-        "longitude": "72.8777"
+        "latitude": "13.0760",
+        "longitude": "80.2777"
     }
     await client.post("/api/v1/incidents/", data=payload)
 
@@ -62,8 +62,8 @@ async def test_analytics_counts_reflect_real_incidents(client: AsyncClient):
         await client.post("/api/v1/incidents/", data={
             "category": category,
             "description": f"Test {category} incident.",
-            "latitude": "19.0760",
-            "longitude": "72.8777",
+            "latitude": "13.0760",
+            "longitude": "80.2777",
         })
 
     data = (await client.get("/api/v1/incidents/analytics/summary")).json()

@@ -4,6 +4,7 @@ import L from 'leaflet';
 // leaflet.heat has been a declared dependency all along but was never imported;
 // the "heatmap" was translucent Circles. It augments the L namespace in place.
 import 'leaflet.heat';
+import { cardDescription } from '../../utils/description';
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -50,7 +51,7 @@ function MapRecenter({ center }) {
 }
 
 export default function IncidentMap({ incidents = [], selectedIncident, onSelectIncident, theme = 'dark', showRadius = true }) {
-  const defaultCenter = [19.0760, 72.8777];
+  const defaultCenter = [13.0604, 80.2496];
   const center = selectedIncident
     ? [selectedIncident.latitude, selectedIncident.longitude]
     : defaultCenter;
@@ -61,9 +62,9 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
   const [activeLayers, setActiveLayers] = React.useState({ incidents: true, heatmap: false });
   const [activeFilter, setActiveFilter] = React.useState('all');
 
-  const tileUrl = theme === 'light'
-    ? 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
-    : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  // CARTO's basemaps now serve an "API key required" image without a key, so
+  // use OpenStreetMap's standard tiles and darken them with a CSS filter.
+  const tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   return (
     <div className="w-full h-full min-h-[480px] rounded-3xl overflow-hidden border border-[var(--border-subtle)] relative shadow-2xl transition-all group">
@@ -122,11 +123,12 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
         ))}
       </div>
 
-      <MapContainer center={defaultCenter} zoom={13} className="w-full h-full">
+      <MapContainer center={defaultCenter} zoom={12} className="w-full h-full">
         <TileLayer
           key={theme}
-          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url={tileUrl}
+          className={theme === 'light' ? '' : 'map-tiles-dark'}
           maxZoom={19}
         />
         <MapRecenter center={center} />
@@ -173,7 +175,7 @@ export default function IncidentMap({ incidents = [], selectedIncident, onSelect
                     </div>
 
                     <strong className="text-sm font-extrabold capitalize block text-[var(--text-primary)]">{inc.category.replace('_', ' ')}</strong>
-                    <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-snug">{inc.description}</p>
+                    <p className="text-xs text-[var(--text-secondary)] line-clamp-2 leading-snug">{cardDescription(inc)}</p>
 
                     <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[10px]">
                       <span className="text-cyan-400 font-mono font-bold">Priority Score {inc.priority_score}</span>

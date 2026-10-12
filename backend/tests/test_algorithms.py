@@ -13,9 +13,9 @@ from backend.app.algorithms.priority_queue import calculate_priority_score, Inci
 from backend.app.algorithms.kd_tree import KDTree
 
 def test_haversine_distance():
-    # Mumbai Marine Drive to Gateway of India (~2.4 km)
-    d = haversine_distance(18.9440, 72.8230, 18.9220, 72.8347)
-    assert 2000.0 < d < 3000.0
+    # Chennai Central to Egmore station (~1.9 km)
+    d = haversine_distance(13.0827, 80.2757, 13.0732, 80.2609)
+    assert 1500.0 < d < 2500.0
 
 def test_union_find_clustering():
     dsu = UnionFind([1, 2, 3, 4])
@@ -26,8 +26,8 @@ def test_union_find_clustering():
 
 def test_incident_duplication_check():
     now = datetime.utcnow()
-    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": True}
-    inc2 = {"latitude": 19.0761, "longitude": 72.8778, "created_at": now + timedelta(minutes=5), "vector": [0.1, 0.2, 0.31], "is_semantic": True}
+    inc1 = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": True}
+    inc2 = {"latitude": 13.0761, "longitude": 80.2778, "created_at": now + timedelta(minutes=5), "vector": [0.1, 0.2, 0.31], "is_semantic": True}
     assert evaluate_incident_duplication(inc1, inc2) is True
 
 
@@ -38,23 +38,23 @@ def test_duplication_rejects_non_semantic_embeddings():
     must still refuse to merge when the embedding is not semantic.
     """
     now = datetime.utcnow()
-    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
-    inc2 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
+    inc1 = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
+    inc2 = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [0.1, 0.2, 0.3], "is_semantic": False}
     assert evaluate_incident_duplication(inc1, inc2) is False
 
 
 def test_legacy_embedding_without_provenance_is_not_clustered():
     """Rows persisted before provenance existed used the fallback - distrust them."""
     now = datetime.utcnow()
-    legacy = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.1, 0.2, 0.3]}
+    legacy = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [0.1, 0.2, 0.3]}
     assert evaluate_incident_duplication(legacy, dict(legacy)) is False
 
 
 def test_duplication_rejects_dissimilar_semantic_vectors():
     """Real embeddings that genuinely differ must not merge."""
     now = datetime.utcnow()
-    inc1 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [1.0, 0.0, 0.0], "is_semantic": True}
-    inc2 = {"latitude": 19.0760, "longitude": 72.8777, "created_at": now, "vector": [0.0, 1.0, 0.0], "is_semantic": True}
+    inc1 = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [1.0, 0.0, 0.0], "is_semantic": True}
+    inc2 = {"latitude": 13.0760, "longitude": 80.2777, "created_at": now, "vector": [0.0, 1.0, 0.0], "is_semantic": True}
     assert evaluate_incident_duplication(inc1, inc2) is False
 
 
@@ -67,7 +67,7 @@ def test_unrelated_incident_text_does_not_merge_end_to_end():
 
     def incident(text):
         e = embeddings_engine.generate_embedding(text)
-        return {"latitude": 19.0760, "longitude": 72.8777, "created_at": now,
+        return {"latitude": 13.0760, "longitude": 80.2777, "created_at": now,
                 "vector": e.vector, "is_semantic": e.is_semantic}
 
     fire = incident("Building fire with thick smoke pouring from the second floor")
@@ -90,9 +90,9 @@ def test_genuine_duplicate_reports_do_merge():
 
     now = datetime.utcnow()
 
-    def incident(text, lon=72.8777):
+    def incident(text, lon=80.2777):
         e = embeddings_engine.generate_embedding(text)
-        return {"latitude": 19.0760, "longitude": lon, "created_at": now,
+        return {"latitude": 13.0760, "longitude": lon, "created_at": now,
                 "vector": e.vector, "is_semantic": e.is_semantic}
 
     a = incident("Building fire with thick smoke pouring from the second floor")
@@ -101,7 +101,7 @@ def test_genuine_duplicate_reports_do_merge():
 
     # Same text, but 6km away - the geo gate must still veto the merge.
     assert evaluate_incident_duplication(a, incident(
-        "Fire in a building, heavy smoke coming out of the upper floor", lon=72.9500)) is False
+        "Fire in a building, heavy smoke coming out of the upper floor", lon=80.3500)) is False
 
 
 def test_similarity_threshold_separates_real_duplicate_populations():
@@ -187,12 +187,12 @@ def test_priority_queue_empty_pop_raises():
 
 def test_kd_tree_responder_matching():
     responders = [
-        {"id": 1, "name": "Unit A", "latitude": 19.0100, "longitude": 72.8400},
-        {"id": 2, "name": "Unit B", "latitude": 19.0760, "longitude": 72.8777},
-        {"id": 3, "name": "Unit C", "latitude": 18.9400, "longitude": 72.8200},
+        {"id": 1, "name": "Unit A", "latitude": 13.0100, "longitude": 80.2400},
+        {"id": 2, "name": "Unit B", "latitude": 13.0760, "longitude": 80.2777},
+        {"id": 3, "name": "Unit C", "latitude": 12.9400, "longitude": 80.2200},
     ]
     tree = KDTree(responders)
-    nearest = tree.find_nearest(19.0759, 72.8776)
+    nearest = tree.find_nearest(13.0759, 80.2776)
     assert nearest["id"] == 2
 
 
@@ -235,11 +235,11 @@ def test_kd_tree_find_k_nearest_matches_sorted_brute_force():
 
 def test_kd_tree_k_nearest_returns_ascending_distances():
     points = [
-        {"id": 1, "latitude": 19.0100, "longitude": 72.8400},
-        {"id": 2, "latitude": 19.0760, "longitude": 72.8777},
-        {"id": 3, "latitude": 18.9400, "longitude": 72.8200},
+        {"id": 1, "latitude": 13.0100, "longitude": 80.2400},
+        {"id": 2, "latitude": 13.0760, "longitude": 80.2777},
+        {"id": 3, "latitude": 12.9400, "longitude": 80.2200},
     ]
-    results = KDTree(points).find_k_nearest(19.0759, 72.8776, k=3)
+    results = KDTree(points).find_k_nearest(13.0759, 80.2776, k=3)
     distances = [d for d, _ in results]
     assert distances == sorted(distances)
     assert results[0][1]["id"] == 2

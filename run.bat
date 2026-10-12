@@ -12,7 +12,7 @@ REM ---- Local LLM (llama.cpp llama-server, OpenAI-compatible on :8080) ----
 REM Set these to start llama-server automatically. Leave LLAMA_MODEL_GGUF
 REM blank to skip; the pipeline then records the LLM as unavailable.
 if not defined LLAMA_SERVER_EXE set "LLAMA_SERVER_EXE=%LOCALAPPDATA%\llama.cpp\cuda-b10809\llama-server.exe"
-if not defined LLAMA_MODEL_GGUF set "LLAMA_MODEL_GGUF=D:\JARVIS\models\Qwen3.5-4B-UD-Q4_K_XL.gguf"
+if not defined LLAMA_MODEL_GGUF set "LLAMA_MODEL_GGUF=D:\JARVIS\models\qwen3.5-9b\Qwen3.5-9B-UD-IQ3_XXS.gguf"
 
 set "PYTHONPATH=%~dp0"
 set "PY=.venv\Scripts\python.exe"

@@ -67,10 +67,10 @@ EXTRACTION_SYSTEM_PROMPT = (
     "requires_immediate_response (boolean), summary (string).\n"
     "Use null when the report does not say. Never invent people counts or places.\n"
     "Example:\n"
-    'Report: "Two cars collided near Andheri flyover about 10 minutes ago, one driver is bleeding."\n'
-    '{"hazard_type": "road accident", "location_name": "Andheri flyover", "time_occurred": "about 10 minutes ago", '
+    'Report: "Two cars collided near Kathipara flyover about 10 minutes ago, one driver is bleeding."\n'
+    '{"hazard_type": "road accident", "location_name": "Kathipara flyover", "time_occurred": "about 10 minutes ago", '
     '"affected_people_count": 1, "severity_rating": 4, "requires_immediate_response": true, '
-    '"summary": "Two-car collision at Andheri flyover with one injured driver."}'
+    '"summary": "Two-car collision at Kathipara flyover with one injured driver."}'
 )
 
 _FENCE_RE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)

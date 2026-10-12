@@ -13,9 +13,9 @@ async def test_incident_media_upload_and_static_serving(client: AsyncClient):
     data = {
         "category": "fire",
         "description": "Building fire reported with thick smoke.",
-        "latitude": "19.0760",
-        "longitude": "72.8777",
-        "location_name": "Andheri West",
+        "latitude": "13.0760",
+        "longitude": "80.2777",
+        "location_name": "Anna Nagar",
         "phone_number": "+919876543210"
     }
     

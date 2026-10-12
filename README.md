@@ -14,7 +14,7 @@ That is the whole setup. The launcher:
 - **with Docker running**: starts Postgres + Redis and a Celery worker;
 - **without Docker**: switches to standalone mode — SQLite database, AI pipeline runs inline in the API process;
 - starts `llama-server` if `LLAMA_SERVER_EXE` / `LLAMA_MODEL_GGUF` point at real files (defaults at the top of `run.bat`);
-- seeds users, responders and a demo set of 18 Mumbai incidents through the real pipeline (skipped if already present; `SKIP_DEMO_SEED=1` to skip).
+- seeds users, responders and a demo set of 18 Chennai incidents through the real pipeline (skipped if already present; `SKIP_DEMO_SEED=1` to skip).
 
 Then open <http://localhost:5173> (citizen) or <http://localhost:5173/dashboard> (dispatcher). Seeded dispatcher login: `dispatcher@sentinel.gov` / `admin123` (admin: `admin@sentinel.gov` / `admin123`).
 

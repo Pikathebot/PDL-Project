@@ -74,6 +74,7 @@ def analyse_video(video_path: str, detector, count: int = 3) -> Dict[str, Any]:
         return {"model_available": False, "frames_sampled": len(frames), "reason": "vision model unavailable"}
 
     objects = sorted({o for r in per_frame for o in r.get("detected_objects", [])})
+    confident = sorted({o for r in per_frame for o in r.get("confident_objects", [])})
     best = max(per_frame, key=lambda r: r.get("highest_confidence") or 0.0)
     best_frame = frames[per_frame.index(best)]
     severities = [r["estimated_severity"] for r in per_frame if r.get("estimated_severity") is not None]
@@ -82,6 +83,7 @@ def analyse_video(video_path: str, detector, count: int = 3) -> Dict[str, Any]:
         "model_available": True,
         "frames_sampled": len(frames),
         "detected_objects": objects,
+        "confident_objects": confident,
         "highest_confidence": best.get("highest_confidence"),
         "estimated_severity": max(severities) if severities else None,
         "hazard_label": best.get("hazard_label"),

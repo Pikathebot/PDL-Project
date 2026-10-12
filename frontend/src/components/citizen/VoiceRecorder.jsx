@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Square, RefreshCw } from 'lucide-react';
+import { Mic, Square, RefreshCw, CircleAlert } from 'lucide-react';
 
 export default function VoiceRecorder({ onAudioRecorded }) {
   const [recording, setRecording] = useState(false);
   const [audioUrl, setAudioUrl] = useState(null);
   const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [micError, setMicError] = useState(null);
   // Stopping a MediaRecorder does not release the microphone - only stopping
   // the stream's tracks does. Without this the browser's recording indicator
   // stayed lit for the lifetime of the page after a single voice note.
@@ -45,12 +46,13 @@ export default function VoiceRecorder({ onAudioRecorded }) {
         onAudioRecorded(file);
       };
 
+      setMicError(null);
       recorder.start();
       setMediaRecorder(recorder);
       setRecording(true);
     } catch (err) {
       releaseMic();
-      alert('Microphone access denied or unsupported.');
+      setMicError('Microphone access denied or unsupported on this device.');
     }
   };
 
@@ -100,6 +102,12 @@ export default function VoiceRecorder({ onAudioRecorded }) {
             </>
           )}
         </button>
+      )}
+      {micError && (
+        <p role="alert" className="flex items-start gap-1.5 text-[11px] font-semibold text-red-400">
+          <CircleAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <span>{micError}</span>
+        </p>
       )}
     </div>
   );

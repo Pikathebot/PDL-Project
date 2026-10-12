@@ -145,7 +145,9 @@ async def get_analytics_summary(
 async def create_incident(
     background_tasks: BackgroundTasks,
     category: IncidentCategory = Form(...),
-    description: str = Form(...),
+    # Optional when media is attached: the AI pipeline then writes a
+    # description from the evidence and flags it as AI-generated.
+    description: str = Form(""),
     latitude: float = Form(...),
     longitude: float = Form(...),
     location_name: Optional[str] = Form(None),
@@ -158,6 +160,10 @@ async def create_incident(
     is_valid_token = await verify_turnstile_token(turnstile_token)
     if not is_valid_token:
         raise HTTPException(status_code=403, detail="Anti-bot security verification failed.")
+
+    description = description.strip()
+    if not description and not any(f.filename for f in files):
+        raise HTTPException(status_code=422, detail="Describe the hazard or attach a photo, video or voice note.")
 
     tracking_id = f"INC-{uuid.uuid4().hex[:8].upper()}"
 
